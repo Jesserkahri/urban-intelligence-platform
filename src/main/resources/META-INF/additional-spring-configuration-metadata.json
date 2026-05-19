@@ -1,0 +1,54 @@
+{
+  "properties": [
+    {
+      "name": "app.name",
+      "type": "java.lang.String",
+      "description": "Application display name."
+    },
+    {
+      "name": "app.version",
+      "type": "java.lang.String",
+      "description": "Application version."
+    },
+    {
+      "name": "app.description",
+      "type": "java.lang.String",
+      "description": "Application description."
+    },
+    {
+      "name": "app.jwt.secret",
+      "type": "java.lang.String",
+      "description": "JWT signing secret key."
+    },
+    {
+      "name": "app.jwt.expiration",
+      "type": "java.lang.Long",
+      "description": "JWT token expiration in milliseconds."
+    },
+    {
+      "name": "app.jwt.issuer",
+      "type": "java.lang.String",
+      "description": "JWT token issuer."
+    },
+    {
+      "name": "app.jwt.audience",
+      "type": "java.lang.String",
+      "description": "JWT token audience."
+    },
+    {
+      "name": "app.analytics.hotspot-threshold",
+      "type": "java.lang.Double",
+      "description": "Score threshold for classifying a hotspot."
+    },
+    {
+      "name": "app.analytics.cluster-radius",
+      "type": "java.lang.Double",
+      "description": "Radius in degrees for incident clustering."
+    },
+    {
+      "name": "app.analytics.incident-density-threshold",
+      "type": "java.lang.Double",
+      "description": "Incident count threshold for high-density zones."
+    }
+  ]
+}
