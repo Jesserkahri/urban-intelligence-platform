@@ -11,7 +11,6 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * IncidentRepository - Data access layer for Incident entities
@@ -49,7 +48,7 @@ public interface IncidentRepository extends JpaRepository<Incident, Long> {
 
     @Query("SELECT COUNT(i) FROM Incident i WHERE i.district.id = :districtId " +
            "AND i.createdAt >= :startDate")
-    Long countIncidentsByDistrictAndDate(@Param("districtId") Long districtId, 
+    Long countIncidentsByDistrictAndDate(@Param("districtId") Long districtId,
                                          @Param("startDate") LocalDateTime startDate);
 
     @Query("SELECT i.type, COUNT(i) FROM Incident i " +
@@ -58,4 +57,20 @@ public interface IncidentRepository extends JpaRepository<Incident, Long> {
 
     @Query("SELECT DISTINCT i.type FROM Incident i")
     List<String> findAllIncidentTypes();
+
+    // ====== Batch/optimized queries for analytics ======
+
+    /**
+     * Bulk incident count per district over a time period.
+     * Avoids N+1 by returning all counts at once.
+     */
+    @Query("SELECT i.district.id, COUNT(i) FROM Incident i " +
+           "WHERE i.createdAt >= :startDate GROUP BY i.district.id")
+    List<Object[]> countIncidentsByDistrictGrouped(@Param("startDate") LocalDateTime startDate);
+
+    /**
+     * Load all incidents for a district in one query with JOIN FETCH.
+     */
+    @Query("SELECT i FROM Incident i LEFT JOIN FETCH i.district WHERE i.district = :district")
+    List<Incident> findByDistrictWithFetch(@Param("district") District district);
 }

@@ -8,6 +8,7 @@ import com.urban.intelligence.platform.domain.repository.IncidentRepository;
 import com.urban.intelligence.platform.domain.repository.RecommendationRepository;
 import com.urban.intelligence.platform.dto.analytics.DistrictRiskAnalysisResponse;
 import com.urban.intelligence.platform.dto.analytics.DistrictRiskRankingResponse;
+import io.micrometer.core.annotation.Timed;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -41,6 +42,7 @@ public class DistrictRiskScoringService {
         Incident.SeverityLevel.CRITICAL, 7
     );
 
+    @Timed(value = "analytics.execution.time", extraTags = {"service", "risk"})
     public DistrictRiskAnalysisResponse analyzeDistrictRisk(Long districtId) {
         log.info("Analyzing risk for district: {}", districtId);
 
@@ -50,6 +52,7 @@ public class DistrictRiskScoringService {
         return calculateRiskScore(district, incidentRepository.findByDistrict(district));
     }
 
+    @Timed(value = "analytics.execution.time", extraTags = {"service", "risk"})
     public List<DistrictRiskRankingResponse> getRiskRanking() {
         log.info("Calculating risk ranking for all districts");
 

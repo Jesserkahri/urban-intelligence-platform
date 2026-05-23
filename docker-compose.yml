@@ -5,37 +5,55 @@ services:
     image: postgres:15-alpine
     container_name: urban-intelligence-db
     environment:
-      POSTGRES_DB: urban_intelligence_db
-      POSTGRES_USER: urban_user
-      POSTGRES_PASSWORD: secure_password_here
+      POSTGRES_DB: ${POSTGRES_DB:-urban_intelligence_db}
+      POSTGRES_USER: ${SPRING_DATASOURCE_USERNAME:-urban_user}
+      POSTGRES_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-secure_password_here}
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U urban_user -d urban_intelligence_db"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${SPRING_DATASOURCE_USERNAME:-urban_user} -d ${POSTGRES_DB:-urban_intelligence_db}",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
       - urban-network
+    restart: unless-stopped
 
   app:
     build: .
     container_name: urban-intelligence-app
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/urban_intelligence_db
-      SPRING_DATASOURCE_USERNAME: urban_user
-      SPRING_DATASOURCE_PASSWORD: secure_password_here
-      APP_JWT_SECRET: urban-intelligence-platform-secret-key-docker
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-900000}
+      JWT_REFRESH_EXPIRATION_MS: ${JWT_REFRESH_EXPIRATION_MS:-604800000}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      SERVER_PORT: ${SERVER_PORT:-8080}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      LOGGING_LEVEL_COM_URBAN_INTELLIGENCE_PLATFORM: ${LOGGING_LEVEL_COM_URBAN_INTELLIGENCE_PLATFORM:-INFO}
     ports:
-      - "8080:8080"
+      - "${SERVER_PORT:-8080}:8080"
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - urban-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 volumes:
   postgres_data:

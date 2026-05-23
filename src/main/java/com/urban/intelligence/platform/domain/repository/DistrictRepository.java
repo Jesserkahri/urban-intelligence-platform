@@ -11,13 +11,16 @@ import java.util.Optional;
 
 /**
  * DistrictRepository - Data access layer for District entities
+ * 
+ * Note: Some queries use LEFT JOIN FETCH to prevent N+1 query problems
+ * when loading districts with their relationships.
  */
 @Repository
 public interface DistrictRepository extends JpaRepository<District, Long> {
 
     Optional<District> findByName(String name);
 
-    @Query("SELECT d FROM District d ORDER BY d.operationalRiskScore DESC")
+    @Query("SELECT DISTINCT d FROM District d ORDER BY d.operationalRiskScore DESC")
     List<District> findByHighestRisk();
 
     @Query("SELECT d FROM District d WHERE d.sustainabilityScore < :threshold " +
@@ -36,4 +39,19 @@ public interface DistrictRepository extends JpaRepository<District, Long> {
 
     @Query("SELECT COUNT(i) FROM Incident i WHERE i.district = :district")
     Long getIncidentCount(@Param("district") District district);
+
+    /**
+     * Find all districts with incidents eagerly loaded.
+     * Uses LEFT JOIN FETCH to prevent N+1 queries when iterating over districts and their incidents.
+     */
+    @Query("SELECT DISTINCT d FROM District d LEFT JOIN FETCH d.incidents ORDER BY d.name")
+    List<District> findAllWithIncidents();
+
+    /**
+     * Find top N districts by operational risk score.
+     * Useful for analytics dashboards with limit.
+     */
+    @Query(value = "SELECT * FROM districts ORDER BY operational_risk_score DESC LIMIT :limit", 
+           nativeQuery = true)
+    List<District> findTopByRiskScore(@Param("limit") int limit);
 }

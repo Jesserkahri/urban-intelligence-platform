@@ -231,25 +231,28 @@ public class TrendAggregationService {
     }
 
     /**
-     * Get anomaly detection alerts (significant spikes)
-     * 
-     * Identifies categories where recent activity significantly exceeds baseline
+     * Get anomaly detection alerts (significant spikes).
+     *
+     * Uses a single batch query to compute avg+max per category,
+     * avoiding N+1 queries across categories.
      */
     public List<Map<String, Object>> detectActivityAnomalies() {
         log.debug("Scanning for activity anomalies");
-        
+
         List<Map<String, Object>> anomalies = new ArrayList<>();
-        List<String> allCategories = analyticsEventRepository.findAllCategories();
-        
         double spikeThreshold = 1.5; // 50% increase
-        
-        for (String category : allCategories) {
-            Double avgScore = analyticsEventRepository.getAverageScoreByCategory(category);
-            Double maxScore = analyticsEventRepository.getMaxScoreByCategory(category);
-            
+
+        // Single batch query: [category, avgScore, maxScore] for all categories at once
+        List<Object[]> batchStats = analyticsEventRepository.getBatchCategoryStats();
+
+        for (Object[] row : batchStats) {
+            String category = (String) row[0];
+            Double avgScore = (Double) row[1];
+            Double maxScore = (Double) row[2];
+
             if (avgScore != null && maxScore != null && avgScore > 0) {
                 double spikeRatio = maxScore / avgScore;
-                
+
                 if (spikeRatio > spikeThreshold) {
                     Map<String, Object> anomaly = new LinkedHashMap<>();
                     anomaly.put("category", category);
@@ -257,12 +260,12 @@ public class TrendAggregationService {
                     anomaly.put("spike_score", Math.round(maxScore * 100.0) / 100.0);
                     anomaly.put("spike_ratio", Math.round(spikeRatio * 100.0) / 100.0);
                     anomaly.put("severity", spikeRatio > 2.0 ? "HIGH" : "MEDIUM");
-                    
+
                     anomalies.add(anomaly);
                 }
             }
         }
-        
+
         log.info("Detected {} activity anomalies", anomalies.size());
         return anomalies;
     }

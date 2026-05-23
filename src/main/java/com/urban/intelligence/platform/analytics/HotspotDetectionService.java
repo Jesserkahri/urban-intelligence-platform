@@ -6,6 +6,7 @@ import com.urban.intelligence.platform.domain.repository.IncidentRepository;
 import com.urban.intelligence.platform.domain.repository.DistrictRepository;
 import com.urban.intelligence.platform.dto.analytics.HotspotRankingResponse;
 import com.urban.intelligence.platform.dto.analytics.HotspotResponse;
+import io.micrometer.core.annotation.Timed;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -16,10 +17,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * HotspotDetectionService - Identifies geographic incident hotspots
- * 
- * Analyzes spatial clusters of incidents to identify high-risk areas
- * that require increased monitoring or intervention.
+ * HotspotDetectionService - Identifies geographic incident hotspots.
  */
 @Service
 @Transactional(readOnly = true)
@@ -30,8 +28,8 @@ public class HotspotDetectionService {
     private final IncidentRepository incidentRepository;
     private final DistrictRepository districtRepository;
 
-    private static final double HOTSPOT_THRESHOLD = 5.0; // incidents per square unit
-    private static final double CLUSTER_RADIUS = 0.05; // approximate geographic radius
+    private static final double HOTSPOT_THRESHOLD = 5.0;
+    private static final double CLUSTER_RADIUS = 0.05;
     private static final Map<Incident.SeverityLevel, Integer> SEVERITY_WEIGHTS = Map.of(
         Incident.SeverityLevel.LOW, 1,
         Incident.SeverityLevel.MEDIUM, 2,
@@ -43,6 +41,7 @@ public class HotspotDetectionService {
         Incident.IncidentStatus.IN_PROGRESS
     );
 
+    @Timed(value = "analytics.execution.time", extraTags = {"service", "hotspot"})
     public HotspotResponse detectDistrictHotspot(Long districtId) {
         log.info("Detecting hotspot for district: {}", districtId);
 
@@ -53,22 +52,34 @@ public class HotspotDetectionService {
         return calculateHotspotMetrics(district, incidents);
     }
 
+    @Timed(value = "analytics.execution.time", extraTags = {"service", "hotspot"})
     public List<HotspotResponse> detectAllHotspots() {
         log.info("Detecting hotspots across all districts");
-
-        return districtRepository.findAll().stream()
-            .map(district -> calculateHotspotMetrics(
-                district,
-                incidentRepository.findByDistrictAndStatusIn(district, UNRESOLVED_STATUSES)))
+        List<District> districts = districtRepository.findAllWithIncidents();
+        return districts.stream()
+            .map(district -> {
+                List<Incident> unresolvedIncidents = district.getIncidents().stream()
+                    .filter(i -> UNRESOLVED_STATUSES.contains(i.getStatus()))
+                    .toList();
+                return calculateHotspotMetrics(district, unresolvedIncidents);
+            })
             .filter(hotspot -> hotspot.getHotspotScore() > 0)
             .sorted(Comparator.comparingDouble(HotspotResponse::getHotspotScore).reversed())
             .collect(Collectors.toList());
     }
 
+    @Timed(value = "analytics.execution.time", extraTags = {"service", "hotspot"})
     public List<HotspotRankingResponse> getTopCriticalHotspots(int limit) {
         log.info("Fetching top {} critical hotspots", limit);
-
-        List<HotspotResponse> hotspots = detectAllHotspots().stream()
+        List<District> topDistricts = districtRepository.findTopByRiskScore(Math.min(limit, 50));
+        List<HotspotResponse> hotspots = topDistricts.stream()
+            .map(district -> {
+                List<Incident> unresolved = incidentRepository
+                    .findByDistrictAndStatusIn(district, UNRESOLVED_STATUSES);
+                return calculateHotspotMetrics(district, unresolved);
+            })
+            .filter(h -> h.getHotspotScore() > 0)
+            .sorted(Comparator.comparingDouble(HotspotResponse::getHotspotScore).reversed())
             .limit(limit)
             .collect(Collectors.toList());
 
@@ -87,81 +98,65 @@ public class HotspotDetectionService {
         return ranking;
     }
 
-    /**
-     * Detect geographic incident hotspots
-     * 
-     * @return Map of hotspot coordinates to incident counts
-     */
     public Map<String, Integer> detectIncidentHotspots() {
         log.info("Starting incident hotspot detection");
-        
+
         LocalDateTime twentyFourHoursAgo = LocalDateTime.now().minusHours(24);
         List<Incident> recentIncidents = incidentRepository.findByCreatedAtAfter(twentyFourHoursAgo);
-        
+
         if (recentIncidents.isEmpty()) {
             log.debug("No recent incidents found for hotspot detection");
             return new HashMap<>();
         }
 
         Map<String, Integer> hotspots = new HashMap<>();
-        
-        // Cluster incidents by proximity
         for (Incident incident : recentIncidents) {
             String clusterKey = generateClusterKey(incident.getLatitude(), incident.getLongitude());
             hotspots.put(clusterKey, hotspots.getOrDefault(clusterKey, 0) + 1);
         }
-        
-        // Filter to only high-density clusters
+
         Map<String, Integer> significantHotspots = hotspots.entrySet().stream()
             .filter(entry -> entry.getValue() >= HOTSPOT_THRESHOLD)
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-        
-        log.info("Detected {} hotspot clusters from {} recent incidents", 
+
+        log.info("Detected {} hotspot clusters from {} recent incidents",
                  significantHotspots.size(), recentIncidents.size());
-        
         return significantHotspots;
     }
 
-    /**
-     * Get districts with highest incident concentration
-     */
     public List<Map<String, Object>> getHighRiskDistricts() {
         log.debug("Analyzing district-level incident concentrations");
-        
+
         List<District> allDistricts = districtRepository.findAll();
         LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
-        
+
+        List<Object[]> countRows = incidentRepository.countIncidentsByDistrictGrouped(sevenDaysAgo);
+        Map<Long, Long> countByDistrictId = new HashMap<>();
+        for (Object[] row : countRows) {
+            countByDistrictId.put((Long) row[0], (Long) row[1]);
+        }
+
         List<Map<String, Object>> riskAnalysis = new ArrayList<>();
-        
         for (District district : allDistricts) {
-            Long incidentCount = incidentRepository.countIncidentsByDistrictAndDate(district.getId(), sevenDaysAgo);
+            Long incidentCount = countByDistrictId.getOrDefault(district.getId(), 0L);
             if (incidentCount > 0) {
                 Map<String, Object> analysis = new LinkedHashMap<>();
                 analysis.put("district_id", district.getId());
                 analysis.put("district_name", district.getName());
                 analysis.put("incident_count_7_days", incidentCount);
                 analysis.put("operational_risk_score", district.getOperationalRiskScore());
-                
-                // Calculate incident density (incidents per 1000 population)
                 Double incidentDensity = (incidentCount * 1000.0) / district.getPopulation();
                 analysis.put("incident_density", Math.round(incidentDensity * 100.0) / 100.0);
-                
                 riskAnalysis.add(analysis);
             }
         }
-        
-        // Sort by incident density
-        riskAnalysis.sort((a, b) -> 
+
+        riskAnalysis.sort((a, b) ->
             ((Double) b.get("incident_density")).compareTo((Double) a.get("incident_density")));
-        
         return riskAnalysis;
     }
 
-    /**
-     * Generate geographic cluster key for incident proximity
-     */
     private String generateClusterKey(Double lat, Double lon) {
-        // Round to nearest cluster radius to group nearby incidents
         long latBucket = Math.round(lat / CLUSTER_RADIUS);
         long lonBucket = Math.round(lon / CLUSTER_RADIUS);
         return latBucket + "," + lonBucket;

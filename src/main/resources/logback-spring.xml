@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!-- Spring property access for app name and profile -->
+    <springProperty name="appName" source="spring.application.name" defaultValue="urban-intelligence-platform"/>
+    <springProperty name="profile" source="spring.profiles.active" defaultValue="dev"/>
+
+    <!-- Default console appender (used in all profiles) -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_LOG_PATTERN:-%d{yyyy-MM-dd HH:mm:ss} - %logger{36} - %msg%n}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- JSON appender (enabled in prod profile) -->
+    <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeMdcKeyName>traceId</includeMdcKeyName>
+            <includeContext>false</includeContext>
+            <customFields>{"application":"${appName}","environment":"${profile}"}</customFields>
+        </encoder>
+    </appender>
+
+    <!-- Dev profile: human-readable console -->
+    <springProfile name="dev,default">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+        <logger name="com.urban.intelligence.platform" level="DEBUG"/>
+    </springProfile>
+
+    <!-- Prod profile: JSON output, WARN+ root, INFO for application -->
+    <springProfile name="prod">
+        <root level="WARN">
+            <appender-ref ref="JSON"/>
+        </root>
+        <logger name="com.urban.intelligence.platform" level="INFO"/>
+    </springProfile>
+</configuration>

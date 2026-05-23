@@ -1,5 +1,6 @@
 package com.urban.intelligence.platform.api.controller;
 
+import com.urban.intelligence.platform.dto.ApiResponse;
 import com.urban.intelligence.platform.dto.DistrictCreateRequest;
 import com.urban.intelligence.platform.dto.DistrictResponse;
 import com.urban.intelligence.platform.dto.DistrictUpdateRequest;
@@ -14,6 +15,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -29,95 +31,67 @@ public class DistrictController {
 
     private final DistrictService districtService;
 
-    /**
-     * Create a new district
-     * POST /api/districts
-     */
     @PostMapping
-    public ResponseEntity<DistrictResponse> createDistrict(@Valid @RequestBody DistrictCreateRequest request) {
-        log.info("POST /api/districts - Creating new district: {}", request.getName());
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
+    public ResponseEntity<ApiResponse<DistrictResponse>> createDistrict(@Valid @RequestBody DistrictCreateRequest request) {
+        log.info("CREATE district: {}", request.getName());
         DistrictResponse response = districtService.createDistrict(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(ApiResponse.success(response, "District created successfully"));
     }
 
-    /**
-     * Get district by ID
-     * GET /api/districts/{id}
-     */
     @GetMapping("/{id}")
-    public ResponseEntity<DistrictResponse> getDistrict(@PathVariable Long id) {
-        log.info("GET /api/districts/{} - Fetching district", id);
+    public ResponseEntity<ApiResponse<DistrictResponse>> getDistrict(@PathVariable Long id) {
+        log.debug("READ district: {}", id);
         DistrictResponse response = districtService.getDistrictById(id);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    /**
-     * Get all districts with pagination
-     * GET /api/districts?page=0&size=20
-     */
     @GetMapping
-    public ResponseEntity<Page<DistrictResponse>> getAllDistricts(
+    public ResponseEntity<ApiResponse<Page<DistrictResponse>>> getAllDistricts(
             @PageableDefault(size = 20, sort = "name", direction = Sort.Direction.ASC) Pageable pageable) {
-        log.info("GET /api/districts - Fetching all districts");
+        log.debug("READ all districts");
         Page<DistrictResponse> response = districtService.getAllDistricts(pageable);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    /**
-     * Get district metrics with health score
-     * GET /api/districts/{id}/metrics
-     */
     @GetMapping("/{id}/metrics")
-    public ResponseEntity<DistrictMetricsResponse> getDistrictMetrics(@PathVariable Long id) {
-        log.info("GET /api/districts/{}/metrics - Fetching district metrics", id);
+    public ResponseEntity<ApiResponse<DistrictMetricsResponse>> getDistrictMetrics(@PathVariable Long id) {
+        log.debug("READ metrics for district: {}", id);
         DistrictMetricsResponse response = districtService.getDistrictMetrics(id);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    /**
-     * Get districts ranked by highest risk
-     * GET /api/districts/risk-analysis/highest
-     */
     @GetMapping("/risk-analysis/highest")
-    public ResponseEntity<List<DistrictResponse>> getDistrictsByHighestRisk() {
-        log.info("GET /api/districts/risk-analysis/highest - Fetching districts by highest risk");
+    public ResponseEntity<ApiResponse<List<DistrictResponse>>> getDistrictsByHighestRisk() {
+        log.debug("READ districts by highest risk");
         List<DistrictResponse> response = districtService.getDistrictsByHighestRisk();
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    /**
-     * Get districts below sustainability threshold
-     * GET /api/districts/sustainability/below?threshold=70
-     */
     @GetMapping("/sustainability/below")
-    public ResponseEntity<List<DistrictResponse>> getDistrictsBelowSustainabilityThreshold(
+    public ResponseEntity<ApiResponse<List<DistrictResponse>>> getDistrictsBelowSustainabilityThreshold(
             @RequestParam Double threshold) {
-        log.info("GET /api/districts/sustainability/below?threshold={}", threshold);
+        log.debug("READ districts below sustainability: {}", threshold);
         List<DistrictResponse> response = districtService.getDistrictsBelowSustainabilityThreshold(threshold);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    /**
-     * Update district
-     * PUT /api/districts/{id}
-     */
     @PutMapping("/{id}")
-    public ResponseEntity<DistrictResponse> updateDistrict(
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
+    public ResponseEntity<ApiResponse<DistrictResponse>> updateDistrict(
             @PathVariable Long id,
             @Valid @RequestBody DistrictUpdateRequest request) {
-        log.info("PUT /api/districts/{} - Updating district", id);
+        log.info("UPDATE district: {}", id);
         DistrictResponse response = districtService.updateDistrict(id, request);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(response, "District updated successfully"));
     }
 
-    /**
-     * Delete district
-     * DELETE /api/districts/{id}
-     */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteDistrict(@PathVariable Long id) {
-        log.info("DELETE /api/districts/{} - Deleting district", id);
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteDistrict(@PathVariable Long id) {
+        log.info("DELETE district: {}", id);
         districtService.deleteDistrict(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ApiResponse.success(null, "District deleted successfully"));
     }
 }

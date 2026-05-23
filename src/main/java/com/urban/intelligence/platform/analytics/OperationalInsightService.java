@@ -1,6 +1,5 @@
 package com.urban.intelligence.platform.analytics;
 
-import com.urban.intelligence.platform.domain.entity.AnalyticsEvent;
 import com.urban.intelligence.platform.domain.entity.District;
 import com.urban.intelligence.platform.domain.entity.Incident;
 import com.urban.intelligence.platform.domain.entity.Recommendation;
@@ -9,6 +8,7 @@ import com.urban.intelligence.platform.domain.repository.DistrictRepository;
 import com.urban.intelligence.platform.domain.repository.IncidentRepository;
 import com.urban.intelligence.platform.domain.repository.RecommendationRepository;
 import com.urban.intelligence.platform.dto.analytics.OperationalInsightResponse;
+import io.micrometer.core.annotation.Timed;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -21,10 +21,13 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * OperationalInsightService - Generates actionable insights for urban operations
- * 
+ * OperationalInsightService - Generates actionable insights for urban operations.
+ *
  * Synthesizes incident, analytics, and district data to produce high-level
- * recommendations for operational improvements and infrastructure optimization.
+ * recommendations for operational improvements.
+ *
+ * Performance: uses a single incident load per district within analyzeAndGenerateRecommendations
+ * to avoid N+1 queries across the 6 analysis methods.
  */
 @Service
 @Transactional
@@ -40,21 +43,28 @@ public class OperationalInsightService {
     private final DistrictRiskScoringService districtRiskScoringService;
     private final TrendAggregationService trendAggregationService;
 
+    @Timed(value = "analytics.execution.time", extraTags = {"service", "insight"})
     public OperationalInsightResponse generateDistrictRecommendations(Long districtId) {
         log.info("Generating recommendations for district: {}", districtId);
 
         District district = districtRepository.findById(districtId)
             .orElseThrow(() -> new IllegalArgumentException("District not found: " + districtId));
 
-        List<Recommendation> recommendations = analyzeAndGenerateRecommendations(district);
+        // Single query: load all incidents for this district at once
+        List<Incident> allIncidents = incidentRepository.findByDistrictWithFetch(district);
+        List<Recommendation> recommendations = analyzeAndGenerateRecommendations(district, allIncidents);
         return buildOperationalInsight(district, recommendations);
     }
 
+    @Timed(value = "analytics.execution.time", extraTags = {"service", "insight"})
     public Page<OperationalInsightResponse> generateAllRecommendations(Pageable pageable) {
         log.info("Generating recommendations for all districts");
 
         return districtRepository.findAll(pageable)
-            .map(district -> buildOperationalInsight(district, analyzeAndGenerateRecommendations(district)));
+            .map(district -> {
+                List<Incident> allIncidents = incidentRepository.findByDistrictWithFetch(district);
+                return buildOperationalInsight(district, analyzeAndGenerateRecommendations(district, allIncidents));
+            });
     }
 
     @Transactional(readOnly = true)
@@ -64,65 +74,57 @@ public class OperationalInsightService {
     }
 
     /**
-     * Generate comprehensive operational dashboard insights
+     * Generate comprehensive operational dashboard insights.
+     * Avoids re-querying incidents by sharing the same 24h batch.
      */
     public Map<String, Object> generateDashboardInsights() {
         log.info("Generating comprehensive operational dashboard insights");
-        
+
+        // Single batch load: all incidents from last 24h, shared across health + alerts
+        LocalDateTime twentyFourHoursAgo = LocalDateTime.now().minusHours(24);
+        List<Incident> recentIncidents = incidentRepository.findByCreatedAtAfter(twentyFourHoursAgo);
+
         Map<String, Object> insights = new LinkedHashMap<>();
-        
-        // System Health
-        insights.put("system_health", generateSystemHealth());
-        
-        // Critical Alerts
-        insights.put("critical_alerts", generateCriticalAlerts());
-        
-        // Operational Recommendations
+        insights.put("system_health", generateSystemHealth(recentIncidents));
+        insights.put("critical_alerts", generateCriticalAlerts(recentIncidents));
         insights.put("operational_recommendations", generateOperationalRecommendations());
-        
-        // Trend Summary
         insights.put("trend_summary", generateTrendSummary());
-        
+
         return insights;
     }
 
     /**
-     * Generate system health overview
+     * Generate system health overview from pre-loaded incidents (no extra query).
      */
-    private Map<String, Object> generateSystemHealth() {
-        LocalDateTime twentyFourHoursAgo = LocalDateTime.now().minusHours(24);
-        
-        List<Incident> recentIncidents = incidentRepository.findByCreatedAtAfter(twentyFourHoursAgo);
+    private Map<String, Object> generateSystemHealth(List<Incident> recentIncidents) {
         long criticalIncidents = recentIncidents.stream()
             .filter(i -> i.getSeverity() == Incident.SeverityLevel.CRITICAL)
             .count();
         long highSeverityIncidents = recentIncidents.stream()
             .filter(i -> i.getSeverity() == Incident.SeverityLevel.HIGH)
             .count();
-        
+
         Map<String, Object> health = new LinkedHashMap<>();
         health.put("total_incidents_24h", recentIncidents.size());
         health.put("critical_incidents", criticalIncidents);
         health.put("high_severity_incidents", highSeverityIncidents);
         health.put("system_status", criticalIncidents > 0 ? "DEGRADED" : "HEALTHY");
-        
+
         return health;
     }
 
     /**
-     * Generate critical alerts requiring immediate attention
+     * Generate critical alerts from pre-loaded incidents (no extra query).
      */
-    private List<Map<String, Object>> generateCriticalAlerts() {
+    private List<Map<String, Object>> generateCriticalAlerts(List<Incident> recentIncidents) {
         List<Map<String, Object>> alerts = new ArrayList<>();
-        
-        // Alert 1: Critical incidents
-        LocalDateTime twentyFourHoursAgo = LocalDateTime.now().minusHours(24);
-        List<Incident> criticalIncidents = incidentRepository.findByCreatedAtAfter(twentyFourHoursAgo)
-            .stream()
+
+        // Alert 1: Critical incidents (use already-loaded list, avoid re-query)
+        List<Incident> criticalIncidents = recentIncidents.stream()
             .filter(i -> i.getSeverity() == Incident.SeverityLevel.CRITICAL)
             .limit(5)
             .collect(Collectors.toList());
-        
+
         if (!criticalIncidents.isEmpty()) {
             Map<String, Object> alert = new LinkedHashMap<>();
             alert.put("type", "CRITICAL_INCIDENTS");
@@ -131,7 +133,7 @@ public class OperationalInsightService {
             alert.put("priority", "IMMEDIATE");
             alerts.add(alert);
         }
-        
+
         // Alert 2: Activity anomalies
         List<Map<String, Object>> anomalies = trendAggregationService.detectActivityAnomalies();
         if (!anomalies.isEmpty() && !anomalies.stream()
@@ -143,72 +145,67 @@ public class OperationalInsightService {
             alert.put("priority", "HIGH");
             alerts.add(alert);
         }
-        
+
         return alerts;
     }
 
-    /**
-     * Generate operational recommendations based on current state
-     */
     private List<String> generateOperationalRecommendations() {
         List<String> recommendations = new ArrayList<>();
-        
-        // Recommendation 1: Based on hotspots
+
         Map<String, Integer> hotspots = hotspotDetectionService.detectIncidentHotspots();
         if (!hotspots.isEmpty()) {
             recommendations.add("Increase monitoring and patrol presence in identified incident hotspots");
         }
-        
-        // Recommendation 2: Based on sustainability
+
         List<Map<String, Object>> lowSustainability = districtRiskScoringService.getAllDistrictsRankedByRisk()
             .stream()
             .filter(d -> d.get("risk_level").equals("CRITICAL"))
             .limit(3)
             .collect(Collectors.toList());
-        
+
         if (!lowSustainability.isEmpty()) {
             recommendations.add("Prioritize sustainability initiatives in high-risk districts");
         }
-        
-        // Recommendation 3: Based on trends
+
         recommendations.add("Review and adjust resource allocation based on current incident trends");
-        
+
         return recommendations;
     }
 
-    /**
-     * Generate trend summary
-     */
     private Map<String, Object> generateTrendSummary() {
         Map<String, Object> summary = new LinkedHashMap<>();
-        
+
         Map<String, Long> incidentTrends = trendAggregationService.getIncidentTypeTrends();
         Map<String, Long> categoryDist = trendAggregationService.getAnalyticsCategoryDistribution();
-        
+
         summary.put("top_incident_types", incidentTrends.entrySet().stream()
             .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
             .limit(5)
-            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, 
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
                 (a, b) -> a, LinkedHashMap::new)));
-        
+
         summary.put("top_categories", categoryDist.entrySet().stream()
             .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
             .limit(5)
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
                 (a, b) -> a, LinkedHashMap::new)));
-        
+
         return summary;
     }
 
-    private List<Recommendation> analyzeAndGenerateRecommendations(District district) {
+    /**
+     * Analyze all recommendation types using a single pre-loaded incident list per district.
+     * This avoids N+1: 6 separate incidentRepository queries per district → 1 shared query.
+     */
+    private List<Recommendation> analyzeAndGenerateRecommendations(District district, List<Incident> allIncidents) {
         List<Recommendation> recommendations = new ArrayList<>();
 
-        recommendations.addAll(analyzeTrafficPatterns(district));
-        recommendations.addAll(analyzeInfrastructureRisks(district));
+        recommendations.addAll(analyzeTrafficPatterns(allIncidents));
+        recommendations.addAll(analyzeInfrastructureRisks(allIncidents));
         recommendations.addAll(analyzeSustainabilityTrends(district));
-        recommendations.addAll(analyzeIncidentGrowth(district));
-        recommendations.addAll(analyzeCriticalIncidents(district));
-        recommendations.addAll(analyzeResolutionPerformance(district));
+        recommendations.addAll(analyzeIncidentGrowth(allIncidents, district));
+        recommendations.addAll(analyzeCriticalIncidents(allIncidents));
+        recommendations.addAll(analyzeResolutionPerformance(allIncidents));
 
         return recommendations.stream()
             .map(recommendation -> {
@@ -219,8 +216,8 @@ public class OperationalInsightService {
             .collect(Collectors.toList());
     }
 
-    private List<Recommendation> analyzeTrafficPatterns(District district) {
-        List<Incident> trafficIncidents = incidentRepository.findByDistrict(district).stream()
+    private List<Recommendation> analyzeTrafficPatterns(List<Incident> allIncidents) {
+        List<Incident> trafficIncidents = allIncidents.stream()
             .filter(incident -> containsIgnoreCase(incident.getType(), "traffic"))
             .collect(Collectors.toList());
 
@@ -229,16 +226,15 @@ public class OperationalInsightService {
             return List.of(Recommendation.builder()
                 .type("TRAFFIC_RESPONSE")
                 .priority(Recommendation.Priority.CRITICAL)
-                .message("High traffic congestion detected. Deploy traffic response teams to "
-                    + district.getName() + " immediately. " + unresolved
-                    + " unresolved traffic incidents require coordination.")
+                .message("High traffic congestion detected. Deploy traffic response teams immediately. "
+                    + unresolved + " unresolved traffic incidents require coordination.")
                 .build());
         }
         return List.of();
     }
 
-    private List<Recommendation> analyzeInfrastructureRisks(District district) {
-        List<Incident> infrastructureIncidents = incidentRepository.findByDistrict(district).stream()
+    private List<Recommendation> analyzeInfrastructureRisks(List<Incident> allIncidents) {
+        List<Incident> infrastructureIncidents = allIncidents.stream()
             .filter(incident -> containsIgnoreCase(incident.getType(), "infrastructure"))
             .collect(Collectors.toList());
 
@@ -252,8 +248,7 @@ public class OperationalInsightService {
                 .priority(Recommendation.Priority.HIGH)
                 .message("Repeated infrastructure issue detected: '" + entry.getKey()
                     + "' has occurred " + entry.getValue()
-                    + " times. Prioritize maintenance and preventive measures in "
-                    + district.getName() + ".")
+                    + " times. Prioritize maintenance and preventive measures.")
                 .build())
             .collect(Collectors.toList());
     }
@@ -271,13 +266,16 @@ public class OperationalInsightService {
         return List.of();
     }
 
-    private List<Recommendation> analyzeIncidentGrowth(District district) {
+    private List<Recommendation> analyzeIncidentGrowth(List<Incident> allIncidents, District district) {
         LocalDateTime thirtyDaysAgo = LocalDateTime.now().minusDays(30);
         LocalDateTime fifteenDaysAgo = LocalDateTime.now().minusDays(15);
-        int earlierIncidents = incidentRepository
-            .findByDistrictAndCreatedAtBetween(district, thirtyDaysAgo, fifteenDaysAgo)
-            .size();
-        int recentIncidents = incidentRepository.findByDistrictAndCreatedAtAfter(district, fifteenDaysAgo).size();
+
+        long earlierIncidents = allIncidents.stream()
+            .filter(i -> !i.getCreatedAt().isBefore(thirtyDaysAgo) && i.getCreatedAt().isBefore(fifteenDaysAgo))
+            .count();
+        long recentIncidents = allIncidents.stream()
+            .filter(i -> !i.getCreatedAt().isBefore(fifteenDaysAgo))
+            .count();
 
         if (earlierIncidents == 0) {
             return List.of();
@@ -296,11 +294,10 @@ public class OperationalInsightService {
         return List.of();
     }
 
-    private List<Recommendation> analyzeCriticalIncidents(District district) {
-        List<Incident> criticalIncidents = incidentRepository.findByDistrictAndSeverity(
-            district,
-            Incident.SeverityLevel.CRITICAL
-        );
+    private List<Recommendation> analyzeCriticalIncidents(List<Incident> allIncidents) {
+        List<Incident> criticalIncidents = allIncidents.stream()
+            .filter(i -> i.getSeverity() == Incident.SeverityLevel.CRITICAL)
+            .collect(Collectors.toList());
         long unresolved = criticalIncidents.stream().filter(this::isUnresolved).count();
 
         if (criticalIncidents.size() >= 2 && unresolved > 0) {
@@ -308,15 +305,14 @@ public class OperationalInsightService {
                 .type("EMERGENCY_COORDINATION")
                 .priority(Recommendation.Priority.CRITICAL)
                 .message("Multiple critical incidents (" + criticalIncidents.size()
-                    + ") in " + district.getName() + " with " + unresolved
+                    + ") with " + unresolved
                     + " unresolved. Activate emergency response coordination.")
                 .build());
         }
         return List.of();
     }
 
-    private List<Recommendation> analyzeResolutionPerformance(District district) {
-        List<Incident> allIncidents = incidentRepository.findByDistrict(district);
+    private List<Recommendation> analyzeResolutionPerformance(List<Incident> allIncidents) {
         if (allIncidents.isEmpty()) {
             return List.of();
         }
@@ -332,8 +328,7 @@ public class OperationalInsightService {
                 .type("PROCESS_IMPROVEMENT")
                 .priority(Recommendation.Priority.MEDIUM)
                 .message("Low incident resolution rate (" + String.format("%.1f", resolutionRate)
-                    + "%) in " + district.getName()
-                    + ". Review and improve incident handling processes.")
+                    + "%). Review and improve incident handling processes.")
                 .build());
         }
         return List.of();

@@ -13,6 +13,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -33,6 +34,7 @@ public class RecommendationController {
      * POST /api/recommendations
      */
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'ANALYST')")
     public ResponseEntity<RecommendationResponse> createRecommendation(
             @Valid @RequestBody RecommendationCreateRequest request) {
         log.info("POST /api/recommendations - Creating new recommendation");
@@ -105,6 +107,7 @@ public class RecommendationController {
      * PUT /api/recommendations/{id}
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'ANALYST')")
     public ResponseEntity<RecommendationResponse> updateRecommendation(
             @PathVariable Long id,
             @Valid @RequestBody RecommendationUpdateRequest request) {
@@ -118,6 +121,7 @@ public class RecommendationController {
      * DELETE /api/recommendations/{id}
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteRecommendation(@PathVariable Long id) {
         log.info("DELETE /api/recommendations/{} - Deleting recommendation", id);
         recommendationService.deleteRecommendation(id);

@@ -47,4 +47,14 @@ public interface AnalyticsEventRepository extends JpaRepository<AnalyticsEvent, 
     @Query("SELECT ae FROM AnalyticsEvent ae WHERE ae.timestamp >= :timestamp " +
            "ORDER BY ae.score DESC")
     List<AnalyticsEvent> findRecentHighScoringEvents(@Param("timestamp") LocalDateTime timestamp);
+
+    // ====== Batch/optimized queries for anomaly detection ======
+
+    /**
+     * Batch avg and max scores per category in a single query.
+     * Returns: [category, avgScore, maxScore]
+     */
+    @Query("SELECT ae.category, AVG(ae.score), MAX(ae.score) FROM AnalyticsEvent ae " +
+           "GROUP BY ae.category")
+    List<Object[]> getBatchCategoryStats();
 }

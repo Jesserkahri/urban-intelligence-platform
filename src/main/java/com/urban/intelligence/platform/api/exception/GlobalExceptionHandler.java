@@ -3,100 +3,103 @@ package com.urban.intelligence.platform.api.exception;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 
-import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
- * GlobalExceptionHandler - Centralized exception handling for all REST endpoints
+ * GlobalExceptionHandler - centralized exception handling for all REST endpoints.
+ *
+ * Returns consistent ApiError responses for all error types.
+ * No raw exceptions leak to the API layer.
  */
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
 
-    /**
-     * Handle ResourceNotFoundException
-     */
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ApiError> handleResourceNotFoundException(
-            ResourceNotFoundException ex, WebRequest request) {
-        
-        log.warn("Resource not found: {}", ex.getMessage());
-        
-        ApiError apiError = ApiError.builder()
-            .status(HttpStatus.NOT_FOUND.value())
-            .message(ex.getMessage())
-            .error("NOT_FOUND")
-            .timestamp(LocalDateTime.now())
-            .build();
-
-        return new ResponseEntity<>(apiError, HttpStatus.NOT_FOUND);
+    public ResponseEntity<ApiError> handleNotFound(ResourceNotFoundException ex, WebRequest request) {
+        log.warn("NOT_FOUND: {}", ex.getMessage());
+        return buildResponse(HttpStatus.NOT_FOUND, "NOT_FOUND", ex.getMessage());
     }
 
-    /**
-     * Handle validation errors from request body validation
-     */
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiError> handleValidationException(
-            MethodArgumentNotValidException ex, WebRequest request) {
-        
-        log.warn("Validation error: {}", ex.getMessage());
-        
-        ApiError apiError = ApiError.builder()
-            .status(HttpStatus.BAD_REQUEST.value())
-            .message("Validation failed")
-            .error("VALIDATION_ERROR")
-            .timestamp(LocalDateTime.now())
-            .build();
-
-        ex.getBindingResult().getAllErrors().forEach((error) -> {
-            String fieldName = ((FieldError) error).getField();
-            String errorMessage = error.getDefaultMessage();
-            apiError.addValidationError(fieldName, errorMessage);
-        });
-
-        return new ResponseEntity<>(apiError, HttpStatus.BAD_REQUEST);
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ApiError> handleBadCredentials(BadCredentialsException ex) {
+        log.warn("BAD_CREDENTIALS: {}", ex.getMessage());
+        return buildResponse(HttpStatus.UNAUTHORIZED, "BAD_CREDENTIALS", ex.getMessage());
     }
 
-    /**
-     * Handle IllegalArgumentException
-     */
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ApiError> handleAuthentication(AuthenticationException ex) {
+        log.warn("AUTH_ERROR: {}", ex.getMessage());
+        return buildResponse(HttpStatus.UNAUTHORIZED, "AUTHENTICATION_ERROR", ex.getMessage());
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiError> handleAccessDenied(AccessDeniedException ex) {
+        log.warn("ACCESS_DENIED: {}", ex.getMessage());
+        return buildResponse(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "Insufficient permissions");
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ApiError> handleIllegalArgumentException(
-            IllegalArgumentException ex, WebRequest request) {
-        
-        log.warn("Illegal argument: {}", ex.getMessage());
-        
-        ApiError apiError = ApiError.builder()
-            .status(HttpStatus.BAD_REQUEST.value())
-            .message(ex.getMessage())
-            .error("INVALID_ARGUMENT")
-            .timestamp(LocalDateTime.now())
-            .build();
-
-        return new ResponseEntity<>(apiError, HttpStatus.BAD_REQUEST);
+    public ResponseEntity<ApiError> handleIllegalArgument(IllegalArgumentException ex) {
+        log.warn("INVALID_ARGUMENT: {}", ex.getMessage());
+        return buildResponse(HttpStatus.BAD_REQUEST, "INVALID_ARGUMENT", ex.getMessage());
     }
 
-    /**
-     * Handle generic exceptions
-     */
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiError> handleGenericException(
-            Exception ex, WebRequest request) {
-        
-        log.error("Unexpected error occurred", ex);
-        
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiError> handleIllegalState(IllegalStateException ex) {
+        log.warn("ILLEGAL_STATE: {}", ex.getMessage());
+        return buildResponse(HttpStatus.CONFLICT, "ILLEGAL_STATE", ex.getMessage());
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex) {
+        log.warn("VALIDATION_ERROR: {}", ex.getMessage());
+
+        Map<String, String> fieldErrors = new HashMap<>();
+        for (FieldError error : ex.getBindingResult().getFieldErrors()) {
+            fieldErrors.put(error.getField(), error.getDefaultMessage());
+        }
+
         ApiError apiError = ApiError.builder()
-            .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-            .message("An unexpected error occurred")
-            .error("INTERNAL_SERVER_ERROR")
-            .timestamp(LocalDateTime.now())
+            .success(false)
+            .code("VALIDATION_ERROR")
+            .message("Validation failed")
+            .fieldErrors(fieldErrors)
             .build();
 
-        return new ResponseEntity<>(apiError, HttpStatus.INTERNAL_SERVER_ERROR);
+        return ResponseEntity.badRequest().body(apiError);
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ApiError> handleMissingParam(MissingServletRequestParameterException ex) {
+        log.warn("MISSING_PARAM: {}", ex.getMessage());
+        return buildResponse(HttpStatus.BAD_REQUEST, "MISSING_PARAMETER", ex.getMessage());
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiError> handleGeneric(Exception ex, WebRequest request) {
+        log.error("UNEXPECTED_ERROR: {}", ex.getMessage(), ex);
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR",
+            "An unexpected error occurred. Please try again later.");
+    }
+
+    private ResponseEntity<ApiError> buildResponse(HttpStatus status, String code, String message) {
+        ApiError error = ApiError.builder()
+            .success(false)
+            .code(code)
+            .message(message)
+            .build();
+        return new ResponseEntity<>(error, status);
     }
 }
