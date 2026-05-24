@@ -94,6 +94,9 @@ public class User implements UserDetails {
 
     private Instant lockedUntil;
 
+    @Version
+    private Long version;
+
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();

@@ -8,6 +8,7 @@ import com.urban.intelligence.platform.domain.entity.Recommendation;
 import com.urban.intelligence.platform.dto.AnalyticsEventCreateRequest;
 import com.urban.intelligence.platform.dto.AnalyticsEventResponse;
 import com.urban.intelligence.platform.dto.AnalyticsAggregateResponse;
+import com.urban.intelligence.platform.dto.ApiResponse;
 import com.urban.intelligence.platform.dto.analytics.CategoryTrendResponse;
 import com.urban.intelligence.platform.dto.analytics.DailyTrendResponse;
 import com.urban.intelligence.platform.dto.analytics.DistrictRiskAnalysisResponse;
@@ -27,13 +28,11 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * AnalyticsController - REST endpoints for analytics event management
- */
 @RestController
 @RequestMapping("/api/analytics")
 @RequiredArgsConstructor
@@ -46,95 +45,65 @@ public class AnalyticsController {
     private final DistrictRiskScoringService riskScoringService;
     private final OperationalInsightService insightService;
 
-    /**
-     * Record a new analytics event
-     * POST /api/analytics/events
-     */
     @PostMapping("/events")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'ANALYST')")
     public ResponseEntity<AnalyticsEventResponse> recordEvent(@Valid @RequestBody AnalyticsEventCreateRequest request) {
-        log.info("POST /api/analytics/events - Recording analytics event");
+        log.info("CREATE analytics event");
         AnalyticsEventResponse response = analyticsEventService.recordEvent(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    /**
-     * Get analytics event by ID
-     * GET /api/analytics/events/{id}
-     */
     @GetMapping("/events/{id}")
     public ResponseEntity<AnalyticsEventResponse> getEvent(@PathVariable Long id) {
-        log.info("GET /api/analytics/events/{} - Fetching analytics event", id);
+        log.debug("READ analytics event: {}", id);
         AnalyticsEventResponse response = analyticsEventService.getEventById(id);
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Get all analytics events with pagination
-     * GET /api/analytics/events?page=0&size=20
-     */
     @GetMapping("/events")
     public ResponseEntity<Page<AnalyticsEventResponse>> getAllEvents(
             @PageableDefault(size = 20, sort = "timestamp", direction = Sort.Direction.DESC) Pageable pageable) {
-        log.info("GET /api/analytics/events - Fetching all analytics events");
+        log.debug("READ all analytics events");
         Page<AnalyticsEventResponse> response = analyticsEventService.getAllEvents(pageable);
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Get events by category
-     * GET /api/analytics/events/category/{category}
-     */
     @GetMapping("/events/category/{category}")
     public ResponseEntity<Page<AnalyticsEventResponse>> getEventsByCategory(
             @PathVariable String category,
             @PageableDefault(size = 20, sort = "timestamp", direction = Sort.Direction.DESC) Pageable pageable) {
-        log.info("GET /api/analytics/events/category/{} - Fetching events by category", category);
+        log.debug("READ events by category: {}", category);
         Page<AnalyticsEventResponse> response = analyticsEventService.getEventsByCategory(category, pageable);
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Get events by source
-     * GET /api/analytics/events/source/{source}
-     */
     @GetMapping("/events/source/{source}")
     public ResponseEntity<Page<AnalyticsEventResponse>> getEventsBySource(
             @PathVariable String source,
             @PageableDefault(size = 20, sort = "timestamp", direction = Sort.Direction.DESC) Pageable pageable) {
-        log.info("GET /api/analytics/events/source/{} - Fetching events by source", source);
+        log.debug("READ events by source: {}", source);
         Page<AnalyticsEventResponse> response = analyticsEventService.getEventsBySource(source, pageable);
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Get recent high-scoring events
-     * GET /api/analytics/events/recent/high-scoring
-     */
     @GetMapping("/events/recent/high-scoring")
     public ResponseEntity<List<AnalyticsEventResponse>> getRecentHighScoringEvents() {
-        log.info("GET /api/analytics/events/recent/high-scoring - Fetching recent high-scoring events");
+        log.debug("READ recent high-scoring events");
         List<AnalyticsEventResponse> response = analyticsEventService.getRecentHighScoringEvents();
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Get aggregate statistics for a category
-     * GET /api/analytics/aggregates/{category}
-     */
     @GetMapping("/aggregates/{category}")
     public ResponseEntity<AnalyticsAggregateResponse> getCategoryAggregates(@PathVariable String category) {
-        log.info("GET /api/analytics/aggregates/{} - Fetching category aggregates", category);
+        log.debug("READ aggregates for category: {}", category);
         AnalyticsAggregateResponse response = analyticsEventService.getCategoryAggregates(category);
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Delete analytics event
-     * DELETE /api/analytics/events/{id}
-     */
     @DeleteMapping("/events/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteEvent(@PathVariable Long id) {
-        log.info("DELETE /api/analytics/events/{} - Deleting analytics event", id);
+        log.info("DELETE analytics event: {}", id);
         analyticsEventService.deleteEvent(id);
         return ResponseEntity.noContent().build();
     }
@@ -193,6 +162,7 @@ public class AnalyticsController {
     }
 
     @PostMapping("/recommendations/generate/{districtId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'ANALYST')")
     public ResponseEntity<OperationalInsightResponse> generateDistrictRecommendations(@PathVariable Long districtId) {
         return ResponseEntity.status(HttpStatus.CREATED).body(insightService.generateDistrictRecommendations(districtId));
     }

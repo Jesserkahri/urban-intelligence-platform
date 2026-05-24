@@ -1,173 +1,134 @@
 package com.urban.intelligence.platform.integration;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.urban.intelligence.platform.auth.dto.LoginRequest;
-import com.urban.intelligence.platform.auth.dto.RegisterRequest;
+import com.urban.intelligence.platform.auth.domain.Role;
+import com.urban.intelligence.platform.auth.domain.User;
+import com.urban.intelligence.platform.auth.repository.UserRepository;
+import com.urban.intelligence.platform.auth.security.JwtTokenProvider;
+import com.urban.intelligence.platform.domain.entity.District;
+import com.urban.intelligence.platform.domain.repository.DistrictRepository;
 import com.urban.intelligence.platform.dto.DistrictCreateRequest;
-import com.urban.intelligence.platform.dto.DistrictUpdateRequest;
+import com.urban.intelligence.platform.dto.DistrictResponse;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.http.*;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Integration tests for District CRUD operations.
- * Tests creation, fetch, update via authenticated requests.
+ * PostgreSQL-backed integration tests for District API.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-class DistrictIntegrationTest {
+class DistrictIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
-    private MockMvc mockMvc;
+    private TestRestTemplate restTemplate;
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private DistrictRepository districtRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
 
     private String adminToken;
 
     @BeforeEach
-    void setUp() throws Exception {
-        // Register an admin user (default role is VIEWER, but good enough for auth test)
-        RegisterRequest register = RegisterRequest.builder()
-            .username("districtadmin")
-            .email("districtadmin@example.com")
-            .password("password123")
-            .build();
+    void setUp() {
+        districtRepository.deleteAll();
+        userRepository.deleteAll();
 
-        MvcResult result = mockMvc.perform(post("/api/auth/register")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(register)))
-            .andReturn();
+        User admin = User.builder()
+            .username("admin").email("admin@test.com")
+            .password("$2a$10$dummy") // not used for JWT generation
+            .displayName("Admin").role(Role.ADMIN)
+            .emailVerified(true).build();
+        userRepository.save(admin);
+        adminToken = jwtTokenProvider.generateAccessToken(admin);
+    }
 
-        adminToken = "Bearer " + objectMapper.readTree(result.getResponse().getContentAsString())
-            .get("data").get("access_token").asText();
+    private HttpEntity<?> authRequest(Object body) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(adminToken);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        return new HttpEntity<>(body, headers);
     }
 
     @Test
-    void createDistrict_shouldReturnDistrict() throws Exception {
-        DistrictCreateRequest request = DistrictCreateRequest.builder()
-            .name("Test District")
-            .population(50000)
-            .sustainabilityScore(75.0)
-            .operationalRiskScore(30.0)
-            .build();
-
-        mockMvc.perform(post("/api/districts")
-                .header("Authorization", adminToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.data.name").value("Test District"))
-            .andExpect(jsonPath("$.data.population").value(50000))
-            .andExpect(jsonPath("$.message").value("District created successfully"));
+    @DisplayName("GET /api/districts without auth returns 401")
+    void getDistrict_withoutAuth_shouldFail() {
+        ResponseEntity<String> response = restTemplate.getForEntity("/api/districts/1", String.class);
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
     }
 
     @Test
-    void getDistrict_shouldReturnDistrict() throws Exception {
-        // Create first
-        DistrictCreateRequest create = DistrictCreateRequest.builder()
-            .name("Fetch District")
-            .population(30000)
-            .sustainabilityScore(80.0)
-            .operationalRiskScore(20.0)
-            .build();
+    @DisplayName("POST /api/districts creates district")
+    void createDistrict_shouldReturnDistrict() {
+        DistrictCreateRequest req = DistrictCreateRequest.builder()
+            .name("Integration District").population(50000)
+            .sustainabilityScore(70.0).operationalRiskScore(30.0).build();
 
-        MvcResult createResult = mockMvc.perform(post("/api/districts")
-                .header("Authorization", adminToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(create)))
-            .andReturn();
+        ResponseEntity<DistrictResponse> response = restTemplate.exchange(
+            "/api/districts", HttpMethod.POST, authRequest(req), DistrictResponse.class);
 
-        Long districtId = objectMapper.readTree(createResult.getResponse().getContentAsString())
-            .get("data").get("id").asLong();
-
-        // Fetch
-        mockMvc.perform(get("/api/districts/" + districtId)
-                .header("Authorization", adminToken))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.data.name").value("Fetch District"))
-            .andExpect(jsonPath("$.data.population").value(30000));
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("Integration District", response.getBody().getName());
     }
 
     @Test
-    void updateDistrict_shouldReturnUpdatedDistrict() throws Exception {
-        // Create
-        DistrictCreateRequest create = DistrictCreateRequest.builder()
-            .name("Update District")
-            .population(40000)
-            .sustainabilityScore(70.0)
-            .operationalRiskScore(40.0)
-            .build();
+    @DisplayName("GET /api/districts/{id} returns district")
+    void getDistrict_shouldReturnDistrict() {
+        District district = districtRepository.save(District.builder()
+            .name("TestDistrict").population(10000)
+            .sustainabilityScore(60.0).operationalRiskScore(40.0).build());
 
-        MvcResult createResult = mockMvc.perform(post("/api/districts")
-                .header("Authorization", adminToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(create)))
-            .andReturn();
+        ResponseEntity<DistrictResponse> response = restTemplate.exchange(
+            "/api/districts/" + district.getId(),
+            HttpMethod.GET, authRequest(null), DistrictResponse.class);
 
-        Long districtId = objectMapper.readTree(createResult.getResponse().getContentAsString())
-            .get("data").get("id").asLong();
-
-        // Update
-        DistrictUpdateRequest update = DistrictUpdateRequest.builder()
-            .name("Updated District")
-            .population(45000)
-            .sustainabilityScore(85.0)
-            .operationalRiskScore(25.0)
-            .build();
-
-        mockMvc.perform(put("/api/districts/" + districtId)
-                .header("Authorization", adminToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(update)))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.data.name").value("Updated District"))
-            .andExpect(jsonPath("$.message").value("District updated successfully"));
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("TestDistrict", response.getBody().getName());
     }
 
     @Test
-    void getDistrict_withoutAuth_shouldFail() throws Exception {
-        mockMvc.perform(get("/api/districts/1"))
-            .andExpect(status().isUnauthorized());
+    @DisplayName("DELETE /api/districts/{id} deletes district")
+    void deleteDistrict_shouldSucceed() {
+        District district = districtRepository.save(District.builder()
+            .name("DeleteDistrict").population(5000)
+            .sustainabilityScore(50.0).operationalRiskScore(50.0).build());
+
+        ResponseEntity<Void> response = restTemplate.exchange(
+            "/api/districts/" + district.getId(),
+            HttpMethod.DELETE, authRequest(null), Void.class);
+
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+        assertFalse(districtRepository.existsById(district.getId()));
     }
 
     @Test
-    void deleteDistrict_shouldSucceed() throws Exception {
-        // Create
-        DistrictCreateRequest create = DistrictCreateRequest.builder()
-            .name("Delete District")
-            .population(10000)
-            .sustainabilityScore(60.0)
-            .operationalRiskScore(50.0)
-            .build();
+    @DisplayName("PUT /api/districts/{id} updates district")
+    void updateDistrict_shouldReturnUpdatedDistrict() {
+        District district = districtRepository.save(District.builder()
+            .name("UpdateDistrict").population(10000)
+            .sustainabilityScore(60.0).operationalRiskScore(40.0).build());
 
-        MvcResult createResult = mockMvc.perform(post("/api/districts")
-                .header("Authorization", adminToken)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(create)))
-            .andReturn();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(adminToken);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<String> req = new HttpEntity<>("{\"population\": 20000, \"sustainabilityScore\": 80.0}", headers);
 
-        Long districtId = objectMapper.readTree(createResult.getResponse().getContentAsString())
-            .get("data").get("id").asLong();
+        @SuppressWarnings("unchecked")
+        ResponseEntity<DistrictResponse> response = (ResponseEntity) restTemplate.exchange(
+            "/api/districts/" + district.getId(),
+            HttpMethod.PUT, req, DistrictResponse.class);
 
-        // Delete
-        mockMvc.perform(delete("/api/districts/" + districtId)
-                .header("Authorization", adminToken))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.message").value("District deleted successfully"));
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(20000, response.getBody().getPopulation());
+        assertEquals(80.0, response.getBody().getSustainabilityScore());
     }
 }

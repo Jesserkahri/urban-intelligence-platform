@@ -1,181 +1,184 @@
 package com.urban.intelligence.platform.integration;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.urban.intelligence.platform.auth.domain.Role;
+import com.urban.intelligence.platform.auth.domain.User;
 import com.urban.intelligence.platform.auth.dto.LoginRequest;
 import com.urban.intelligence.platform.auth.dto.RefreshTokenRequest;
 import com.urban.intelligence.platform.auth.dto.RegisterRequest;
+import com.urban.intelligence.platform.auth.dto.TokenResponse;
+import com.urban.intelligence.platform.auth.repository.UserRepository;
+import com.urban.intelligence.platform.auth.security.JwtTokenProvider;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Integration tests for authentication flow.
- * Tests register, login success, login failure, and token refresh.
+ * PostgreSQL-backed integration tests for Authentication API.
+ * Tests registration, login, refresh token rotation, and error handling.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-class AuthIntegrationTest {
+class AuthIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
-    private MockMvc mockMvc;
+    private TestRestTemplate restTemplate;
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private UserRepository userRepository;
 
-    @Test
-    void register_shouldReturnTokens() throws Exception {
-        RegisterRequest request = RegisterRequest.builder()
-            .username("testuser")
-            .email("test@example.com")
-            .password("password123")
-            .build();
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
-        mockMvc.perform(post("/api/auth/register")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.data.access_token").exists())
-            .andExpect(jsonPath("$.data.refresh_token").exists())
-            .andExpect(jsonPath("$.message").value("User registered successfully"));
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
+
+    @BeforeEach
+    void setUp() {
+        userRepository.deleteAll();
     }
 
     @Test
-    void register_withDuplicateUsername_shouldFail() throws Exception {
-        RegisterRequest request = RegisterRequest.builder()
-            .username("dupuser")
-            .email("dup@example.com")
-            .password("password123")
-            .build();
+    @DisplayName("Register new user returns tokens")
+    void register_shouldReturnTokens() {
+        RegisterRequest req = RegisterRequest.builder()
+            .username("newuser").email("new@test.com")
+            .password("SecurePass1!").build();
 
-        // First registration
-        mockMvc.perform(post("/api/auth/register")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-            .andExpect(status().isCreated());
+        ResponseEntity<TokenResponse> response = restTemplate.postForEntity(
+            "/api/auth/register", req, TokenResponse.class);
 
-        // Duplicate username
-        RegisterRequest duplicate = RegisterRequest.builder()
-            .username("dupuser")
-            .email("other@example.com")
-            .password("password123")
-            .build();
-
-        mockMvc.perform(post("/api/auth/register")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(duplicate)))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.success").value(false))
-            .andExpect(jsonPath("$.code").value("INVALID_ARGUMENT"));
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertNotNull(response.getBody().getAccessToken());
+        assertNotNull(response.getBody().getRefreshToken());
+        assertEquals("Bearer", response.getBody().getTokenType());
     }
 
     @Test
-    void login_withValidCredentials_shouldReturnTokens() throws Exception {
-        // First register a user
-        RegisterRequest register = RegisterRequest.builder()
-            .username("loginuser")
-            .email("login@example.com")
-            .password("password123")
-            .build();
+    @DisplayName("Register with duplicate username fails")
+    void register_withDuplicateUsername_shouldFail() {
+        RegisterRequest req = RegisterRequest.builder()
+            .username("dupuser").email("dup@test.com")
+            .password("SecurePass1!").build();
 
-        mockMvc.perform(post("/api/auth/register")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(register)));
+        // First registration succeeds
+        restTemplate.postForEntity("/api/auth/register", req, TokenResponse.class);
 
-        // Login
-        LoginRequest login = LoginRequest.builder()
-            .login("loginuser")
-            .password("password123")
-            .build();
+        // Second registration with same username fails
+        RegisterRequest dupReq = RegisterRequest.builder()
+            .username("dupuser").email("other@test.com")
+            .password("SecurePass1!").build();
 
-        mockMvc.perform(post("/api/auth/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(login)))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.data.access_token").exists())
-            .andExpect(jsonPath("$.data.refresh_token").exists());
+        ResponseEntity<String> response = restTemplate.postForEntity(
+            "/api/auth/register", dupReq, String.class);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     }
 
     @Test
-    void login_withWrongPassword_shouldFail() throws Exception {
-        // First register
-        RegisterRequest register = RegisterRequest.builder()
-            .username("wpassuser")
-            .email("wpass@example.com")
-            .password("password123")
-            .build();
+    @DisplayName("Login with valid credentials returns tokens")
+    void login_withValidCredentials_shouldSucceed() {
+        // Pre-register user directly
+        User user = User.builder()
+            .username("loginuser").email("login@test.com")
+            .password(passwordEncoder.encode("SecurePass1!"))
+            .displayName("Login User").role(Role.VIEWER)
+            .emailVerified(true).build();
+        userRepository.save(user);
 
-        mockMvc.perform(post("/api/auth/register")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(register)));
+        LoginRequest req = LoginRequest.builder()
+            .login("loginuser").password("SecurePass1!").build();
 
-        // Wrong password
-        LoginRequest login = LoginRequest.builder()
-            .login("wpassuser")
-            .password("wrongpassword")
-            .build();
+        ResponseEntity<TokenResponse> response = restTemplate.postForEntity(
+            "/api/auth/login", req, TokenResponse.class);
 
-        mockMvc.perform(post("/api/auth/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(login)))
-            .andExpect(status().isUnauthorized())
-            .andExpect(jsonPath("$.success").value(false))
-            .andExpect(jsonPath("$.code").value("BAD_CREDENTIALS"));
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertNotNull(response.getBody().getAccessToken());
     }
 
     @Test
-    void refreshToken_withValidToken_shouldReturnNewTokens() throws Exception {
-        // Register
-        RegisterRequest register = RegisterRequest.builder()
-            .username("refreshuser")
-            .email("refresh@example.com")
-            .password("password123")
-            .build();
+    @DisplayName("Login with wrong password fails")
+    void login_withWrongPassword_shouldFail() {
+        User user = User.builder()
+            .username("wrongpwd").email("wrong@test.com")
+            .password(passwordEncoder.encode("SecurePass1!"))
+            .displayName("Wrong Pwd").role(Role.VIEWER)
+            .emailVerified(true).build();
+        userRepository.save(user);
 
-        String registerResponse = mockMvc.perform(post("/api/auth/register")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(register)))
-            .andReturn().getResponse().getContentAsString();
+        LoginRequest req = LoginRequest.builder()
+            .login("wrongpwd").password("WrongPassword1!").build();
 
-        // Extract refresh token from response
-        String refreshToken = objectMapper.readTree(registerResponse)
-            .get("data").get("refresh_token").asText();
+        ResponseEntity<String> response = restTemplate.postForEntity(
+            "/api/auth/login", req, String.class);
 
-        // Use it to refresh
-        RefreshTokenRequest refreshRequest = RefreshTokenRequest.builder()
-            .refreshToken(refreshToken)
-            .build();
-
-        mockMvc.perform(post("/api/auth/refresh")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(refreshRequest)))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.data.access_token").exists())
-            .andExpect(jsonPath("$.data.refresh_token").exists());
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
     }
 
     @Test
-    void login_withNonexistentUser_shouldFail() throws Exception {
-        LoginRequest login = LoginRequest.builder()
-            .login("nobody")
-            .password("password123")
-            .build();
+    @DisplayName("Refresh token rotates the token pair")
+    void refreshToken_withValidToken_shouldReturnNewTokens() {
+        // Register a user first
+        RegisterRequest regReq = RegisterRequest.builder()
+            .username("refreshuser").email("refresh@test.com")
+            .password("SecurePass1!").build();
 
-        mockMvc.perform(post("/api/auth/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(login)))
-            .andExpect(status().isUnauthorized())
-            .andExpect(jsonPath("$.success").value(false))
-            .andExpect(jsonPath("$.code").value("BAD_CREDENTIALS"));
+        ResponseEntity<TokenResponse> regResponse = restTemplate.postForEntity(
+            "/api/auth/register", regReq, TokenResponse.class);
+        String refreshToken = regResponse.getBody().getRefreshToken();
+
+        // Refresh the token
+        RefreshTokenRequest refreshReq = RefreshTokenRequest.builder()
+            .refreshToken(refreshToken).build();
+
+        ResponseEntity<TokenResponse> refreshResponse = restTemplate.postForEntity(
+            "/api/auth/refresh", refreshReq, TokenResponse.class);
+
+        assertEquals(HttpStatus.OK, refreshResponse.getStatusCode());
+        assertNotNull(refreshResponse.getBody().getAccessToken());
+        assertNotNull(refreshResponse.getBody().getRefreshToken());
+        assertNotEquals(refreshToken, refreshResponse.getBody().getRefreshToken());
+    }
+
+    @Test
+    @DisplayName("Revoked refresh token is rejected")
+    void revokedRefreshToken_shouldBeRejected() {
+        RegisterRequest regReq = RegisterRequest.builder()
+            .username("revokeuser").email("revoke@test.com")
+            .password("SecurePass1!").build();
+
+        ResponseEntity<TokenResponse> regResponse = restTemplate.postForEntity(
+            "/api/auth/register", regReq, TokenResponse.class);
+        String refreshToken = regResponse.getBody().getRefreshToken();
+
+        // First refresh (consumes old token)
+        RefreshTokenRequest refreshReq1 = RefreshTokenRequest.builder()
+            .refreshToken(refreshToken).build();
+        restTemplate.postForEntity("/api/auth/refresh", refreshReq1, TokenResponse.class);
+
+        // Second refresh with same token should fail
+        ResponseEntity<String> refreshReq2 = restTemplate.postForEntity(
+            "/api/auth/refresh", refreshReq1, String.class);
+
+        assertEquals(HttpStatus.BAD_REQUEST, refreshReq2.getStatusCode());
+    }
+
+    @Test
+    @DisplayName("Invalid JWT is rejected")
+    void invalidJwt_shouldBeRejected() {
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/districts/1",
+            HttpMethod.GET,
+            new HttpEntity<>(null, org.springframework.http.HttpHeaders.EMPTY),
+            String.class);
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
     }
 }

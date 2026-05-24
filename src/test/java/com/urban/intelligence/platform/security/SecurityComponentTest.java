@@ -2,11 +2,8 @@ package com.urban.intelligence.platform.security;
 
 import com.urban.intelligence.platform.auth.domain.Role;
 import com.urban.intelligence.platform.auth.domain.User;
-import com.urban.intelligence.platform.auth.security.JwtTokenProvider;
 import com.urban.intelligence.platform.auth.security.UserDetailsServiceImpl;
 import com.urban.intelligence.platform.auth.repository.UserRepository;
-import com.urban.intelligence.platform.config.JwtProperties;
-import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -26,8 +23,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 /**
- * Unit tests for security components
- * Tests JWT validation, user details loading, and authorization
+ * Unit tests for UserDetailsServiceImpl security component.
+ * Tests user loading by username or email.
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Security Component Unit Tests")
@@ -35,9 +32,6 @@ class SecurityComponentTest {
 
     @Mock
     private UserRepository userRepository;
-
-    @Mock
-    private JwtProperties jwtProperties;
 
     @InjectMocks
     private UserDetailsServiceImpl userDetailsService;
@@ -77,13 +71,10 @@ class SecurityComponentTest {
     @Test
     @DisplayName("Load user details by username successfully")
     void testLoadUserByUsernameSuccess() {
-        // Arrange
-        when(userRepository.findByUsername("viewer")).thenReturn(Optional.of(testUser));
+        when(userRepository.findByUsernameOrEmail("viewer", "viewer")).thenReturn(Optional.of(testUser));
 
-        // Act
         UserDetails userDetails = userDetailsService.loadUserByUsername("viewer");
 
-        // Assert
         assertNotNull(userDetails);
         assertEquals("viewer", userDetails.getUsername());
         assertTrue(userDetails.isEnabled());
@@ -95,10 +86,8 @@ class SecurityComponentTest {
     @Test
     @DisplayName("Load user details throws exception for non-existent user")
     void testLoadUserByUsernameNotFound() {
-        // Arrange
-        when(userRepository.findByUsername("nonexistent")).thenReturn(Optional.empty());
+        when(userRepository.findByUsernameOrEmail("nonexistent", "nonexistent")).thenReturn(Optional.empty());
 
-        // Act & Assert
         assertThrows(UsernameNotFoundException.class, () -> {
             userDetailsService.loadUserByUsername("nonexistent");
         });
@@ -107,14 +96,11 @@ class SecurityComponentTest {
     @Test
     @DisplayName("VIEWER role is loaded correctly")
     void testViewerRoleLoaded() {
-        // Arrange
-        when(userRepository.findByUsername("viewer")).thenReturn(Optional.of(testUser));
+        when(userRepository.findByUsernameOrEmail("viewer", "viewer")).thenReturn(Optional.of(testUser));
 
-        // Act
         UserDetails userDetails = userDetailsService.loadUserByUsername("viewer");
         Collection<? extends GrantedAuthority> authorities = userDetails.getAuthorities();
 
-        // Assert
         assertNotNull(authorities);
         assertTrue(authorities.stream()
             .anyMatch(a -> a.getAuthority().equals("ROLE_VIEWER")));
@@ -125,14 +111,11 @@ class SecurityComponentTest {
     @Test
     @DisplayName("ADMIN role is loaded correctly")
     void testAdminRoleLoaded() {
-        // Arrange
-        when(userRepository.findByUsername("admin")).thenReturn(Optional.of(adminUser));
+        when(userRepository.findByUsernameOrEmail("admin", "admin")).thenReturn(Optional.of(adminUser));
 
-        // Act
         UserDetails userDetails = userDetailsService.loadUserByUsername("admin");
         Collection<? extends GrantedAuthority> authorities = userDetails.getAuthorities();
 
-        // Assert
         assertNotNull(authorities);
         assertTrue(authorities.stream()
             .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")));
@@ -141,7 +124,6 @@ class SecurityComponentTest {
     @Test
     @DisplayName("Locked user cannot authenticate")
     void testLockedUserCannotAuthenticate() {
-        // Arrange
         User lockedUser = User.builder()
             .id(3L)
             .username("locked")
@@ -151,23 +133,20 @@ class SecurityComponentTest {
             .role(Role.VIEWER)
             .enabled(true)
             .accountNonExpired(true)
-            .accountNonLocked(false)  // Account is locked
+            .accountNonLocked(false)
             .credentialsNonExpired(true)
             .build();
 
-        when(userRepository.findByUsername("locked")).thenReturn(Optional.of(lockedUser));
+        when(userRepository.findByUsernameOrEmail("locked", "locked")).thenReturn(Optional.of(lockedUser));
 
-        // Act
         UserDetails userDetails = userDetailsService.loadUserByUsername("locked");
 
-        // Assert
         assertFalse(userDetails.isAccountNonLocked());
     }
 
     @Test
     @DisplayName("Disabled user cannot authenticate")
     void testDisabledUserCannotAuthenticate() {
-        // Arrange
         User disabledUser = User.builder()
             .id(4L)
             .username("disabled")
@@ -175,18 +154,16 @@ class SecurityComponentTest {
             .password("hashed_password")
             .displayName("Disabled User")
             .role(Role.VIEWER)
-            .enabled(false)  // Account is disabled
+            .enabled(false)
             .accountNonExpired(true)
             .accountNonLocked(true)
             .credentialsNonExpired(true)
             .build();
 
-        when(userRepository.findByUsername("disabled")).thenReturn(Optional.of(disabledUser));
+        when(userRepository.findByUsernameOrEmail("disabled", "disabled")).thenReturn(Optional.of(disabledUser));
 
-        // Act
         UserDetails userDetails = userDetailsService.loadUserByUsername("disabled");
 
-        // Assert
         assertFalse(userDetails.isEnabled());
     }
 }

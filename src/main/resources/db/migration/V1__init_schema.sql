@@ -63,7 +63,8 @@ CREATE TABLE IF NOT EXISTS users (
     password_reset_token VARCHAR(36),
     password_reset_token_expiry TIMESTAMP,
     failed_login_attempts INTEGER NOT NULL DEFAULT 0,
-    locked_until TIMESTAMP
+    locked_until TIMESTAMP,
+    version BIGINT DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS refresh_token_sessions (

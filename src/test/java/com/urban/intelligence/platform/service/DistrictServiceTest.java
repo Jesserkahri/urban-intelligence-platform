@@ -2,6 +2,7 @@ package com.urban.intelligence.platform.service;
 
 import com.urban.intelligence.platform.domain.entity.District;
 import com.urban.intelligence.platform.domain.repository.DistrictRepository;
+import com.urban.intelligence.platform.domain.repository.IncidentRepository;
 import com.urban.intelligence.platform.dto.DistrictCreateRequest;
 import com.urban.intelligence.platform.dto.DistrictResponse;
 import com.urban.intelligence.platform.dto.DistrictUpdateRequest;
@@ -25,16 +26,15 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-/**
- * Unit tests for DistrictService
- * Tests CRUD operations, filtering, and analytics methods
- */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("DistrictService Unit Tests")
 class DistrictServiceTest {
 
     @Mock
     private DistrictRepository districtRepository;
+
+    @Mock
+    private IncidentRepository incidentRepository;
 
     @InjectMocks
     private DistrictService districtService;
@@ -63,13 +63,12 @@ class DistrictServiceTest {
     @Test
     @DisplayName("Create district successfully")
     void testCreateDistrictSuccess() {
-        // Arrange
+        when(districtRepository.findByName("New District")).thenReturn(Optional.empty());
         when(districtRepository.save(any(District.class))).thenReturn(testDistrict);
+        lenient().when(incidentRepository.countByDistrict(any(District.class))).thenReturn(0L);
 
-        // Act
         DistrictResponse response = districtService.createDistrict(createRequest);
 
-        // Assert
         assertNotNull(response);
         assertEquals("Downtown District", response.getName());
         assertEquals(50000, response.getPopulation());
@@ -79,13 +78,11 @@ class DistrictServiceTest {
     @Test
     @DisplayName("Get district by ID successfully")
     void testGetDistrictByIdSuccess() {
-        // Arrange
         when(districtRepository.findById(1L)).thenReturn(Optional.of(testDistrict));
+        lenient().when(incidentRepository.countByDistrict(testDistrict)).thenReturn(0L);
 
-        // Act
         DistrictResponse response = districtService.getDistrictById(1L);
 
-        // Assert
         assertNotNull(response);
         assertEquals("Downtown District", response.getName());
     }
@@ -93,10 +90,8 @@ class DistrictServiceTest {
     @Test
     @DisplayName("Get district by ID throws exception when not found")
     void testGetDistrictByIdNotFound() {
-        // Arrange
         when(districtRepository.findById(999L)).thenReturn(Optional.empty());
 
-        // Act & Assert
         assertThrows(ResourceNotFoundException.class, () -> {
             districtService.getDistrictById(999L);
         });
@@ -105,15 +100,13 @@ class DistrictServiceTest {
     @Test
     @DisplayName("Get all districts with pagination")
     void testGetAllDistrictsPaginated() {
-        // Arrange
         Pageable pageable = PageRequest.of(0, 10);
         Page<District> districtPage = new PageImpl<>(List.of(testDistrict));
         when(districtRepository.findAll(pageable)).thenReturn(districtPage);
+        lenient().when(incidentRepository.countByDistrict(any(District.class))).thenReturn(0L);
 
-        // Act
         Page<DistrictResponse> response = districtService.getAllDistricts(pageable);
 
-        // Assert
         assertNotNull(response);
         assertEquals(1, response.getContent().size());
         assertEquals("Downtown District", response.getContent().get(0).getName());
@@ -122,7 +115,6 @@ class DistrictServiceTest {
     @Test
     @DisplayName("Update district successfully")
     void testUpdateDistrictSuccess() {
-        // Arrange
         DistrictUpdateRequest updateRequest = DistrictUpdateRequest.builder()
             .population(60000)
             .sustainabilityScore(80.0)
@@ -139,11 +131,10 @@ class DistrictServiceTest {
 
         when(districtRepository.findById(1L)).thenReturn(Optional.of(testDistrict));
         when(districtRepository.save(any(District.class))).thenReturn(updatedDistrict);
+        lenient().when(incidentRepository.countByDistrict(any(District.class))).thenReturn(0L);
 
-        // Act
         DistrictResponse response = districtService.updateDistrict(1L, updateRequest);
 
-        // Assert
         assertNotNull(response);
         assertEquals(60000, response.getPopulation());
         assertEquals(80.0, response.getSustainabilityScore());
@@ -152,20 +143,16 @@ class DistrictServiceTest {
     @Test
     @DisplayName("Delete district successfully")
     void testDeleteDistrictSuccess() {
-        // Arrange
-        when(districtRepository.findById(1L)).thenReturn(Optional.of(testDistrict));
+        when(districtRepository.existsById(1L)).thenReturn(true);
 
-        // Act
         districtService.deleteDistrict(1L);
 
-        // Assert
-        verify(districtRepository).delete(testDistrict);
+        verify(districtRepository).deleteById(1L);
     }
 
     @Test
     @DisplayName("Get districts below sustainability threshold")
     void testGetDistrictsBelowSustainabilityThreshold() {
-        // Arrange
         District lowSustainabilityDistrict = District.builder()
             .id(2L)
             .name("Low Sustainability District")
@@ -176,11 +163,10 @@ class DistrictServiceTest {
 
         when(districtRepository.findBelowSustainabilityThreshold(50.0))
             .thenReturn(List.of(lowSustainabilityDistrict));
+        lenient().when(incidentRepository.countByDistrict(any(District.class))).thenReturn(0L);
 
-        // Act
         List<DistrictResponse> response = districtService.getDistrictsBelowSustainabilityThreshold(50.0);
 
-        // Assert
         assertNotNull(response);
         assertEquals(1, response.size());
         assertEquals(45.0, response.get(0).getSustainabilityScore());
@@ -189,7 +175,6 @@ class DistrictServiceTest {
     @Test
     @DisplayName("Get districts by highest risk")
     void testGetDistrictsByHighestRisk() {
-        // Arrange
         District highRiskDistrict = District.builder()
             .id(3L)
             .name("High Risk District")
@@ -199,11 +184,10 @@ class DistrictServiceTest {
             .build();
 
         when(districtRepository.findByHighestRisk()).thenReturn(List.of(highRiskDistrict, testDistrict));
+        lenient().when(incidentRepository.countByDistrict(any(District.class))).thenReturn(0L);
 
-        // Act
         List<DistrictResponse> response = districtService.getDistrictsByHighestRisk();
 
-        // Assert
         assertNotNull(response);
         assertEquals(2, response.size());
         assertEquals(85.0, response.get(0).getOperationalRiskScore());

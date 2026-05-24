@@ -5,19 +5,17 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.EnableAspectJAutoProxy;
 
 /**
- * MetricsConfig - defines Micrometer counters and timed annotations for observability.
+ * MetricsConfig - defines Micrometer counters and enables @Timed annotations.
  *
  * All metrics are accessible via /actuator/metrics endpoint.
  * No external monitoring stack required.
  */
 @Configuration
-@EnableAspectJAutoProxy
 public class MetricsConfig {
 
-    /** Enables @Timed annotation on any Spring-managed bean (services, controllers, etc.) */
+    /** Enables @Timed annotation on any Spring-managed bean */
     @Bean
     public TimedAspect timedAspect(MeterRegistry registry) {
         return new TimedAspect(registry);

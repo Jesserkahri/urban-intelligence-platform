@@ -21,10 +21,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 
-/**
- * Unit tests for analytics services
- * Tests hotspot detection, risk scoring, and trend analysis
- */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Analytics Service Unit Tests")
 class HotspotDetectionServiceTest {
@@ -95,20 +91,17 @@ class HotspotDetectionServiceTest {
     @Test
     @DisplayName("Detect hotspot for district with incidents")
     void testDetectDistrictHotspotWithIncidents() {
-        // Arrange
         when(districtRepository.findById(1L)).thenReturn(Optional.of(testDistrict));
         when(incidentRepository.findByDistrictAndStatusIn(
             eq(testDistrict),
-            argThat(list -> list.contains(Incident.IncidentStatus.REPORTED))))
-            .thenReturn(testIncidents.stream()
+            argThat(list -> list.contains(Incident.IncidentStatus.REPORTED)))
+            ).thenReturn(testIncidents.stream()
                 .filter(i -> i.getStatus() == Incident.IncidentStatus.REPORTED || 
                            i.getStatus() == Incident.IncidentStatus.IN_PROGRESS)
                 .toList());
 
-        // Act
         HotspotResponse response = hotspotDetectionService.detectDistrictHotspot(1L);
 
-        // Assert
         assertNotNull(response);
         assertEquals("Test District", response.getDistrictName());
         assertEquals(2, response.getUnresolvedIncidentCount());
@@ -118,10 +111,7 @@ class HotspotDetectionServiceTest {
     @Test
     @DisplayName("Detect hotspot throws exception for non-existent district")
     void testDetectDistrictHotspotDistrictNotFound() {
-        // Arrange
         when(districtRepository.findById(999L)).thenReturn(Optional.empty());
-
-        // Act & Assert
         assertThrows(IllegalArgumentException.class, () -> {
             hotspotDetectionService.detectDistrictHotspot(999L);
         });
@@ -130,7 +120,6 @@ class HotspotDetectionServiceTest {
     @Test
     @DisplayName("Hotspot score increases with critical incidents")
     void testHotspotScoreWithCriticalIncidents() {
-        // Arrange
         District criticalDistrict = District.builder()
             .id(2L)
             .name("Critical District")
@@ -167,62 +156,51 @@ class HotspotDetectionServiceTest {
         when(districtRepository.findById(2L)).thenReturn(Optional.of(criticalDistrict));
         when(incidentRepository.findByDistrictAndStatusIn(
             eq(criticalDistrict),
-            argThat(list -> list.contains(Incident.IncidentStatus.REPORTED))))
-            .thenReturn(criticalIncidents);
+            argThat(list -> list.contains(Incident.IncidentStatus.REPORTED)))
+            ).thenReturn(criticalIncidents);
 
-        // Act
         HotspotResponse response = hotspotDetectionService.detectDistrictHotspot(2L);
 
-        // Assert
         assertNotNull(response);
         assertEquals(2, response.getUnresolvedIncidentCount());
-        // Hotspot score should be higher with critical incidents
         assertTrue(response.getHotspotScore() > 5.0);
     }
 
     @Test
     @DisplayName("Hotspot detection ignores resolved incidents")
     void testHotspotIgnoresResolvedIncidents() {
-        // Arrange
         when(districtRepository.findById(1L)).thenReturn(Optional.of(testDistrict));
-        // Only return unresolved incidents
         List<Incident> unresolvedIncidents = testIncidents.stream()
             .filter(i -> i.getStatus() != Incident.IncidentStatus.RESOLVED)
             .toList();
         
         when(incidentRepository.findByDistrictAndStatusIn(
             eq(testDistrict),
-            argThat(list -> list.contains(Incident.IncidentStatus.REPORTED))))
-            .thenReturn(unresolvedIncidents);
+            argThat(list -> list.contains(Incident.IncidentStatus.REPORTED)))
+            ).thenReturn(unresolvedIncidents);
 
-        // Act
         HotspotResponse response = hotspotDetectionService.detectDistrictHotspot(1L);
 
-        // Assert
         assertNotNull(response);
-        // Only 2 unresolved incidents (1 REPORTED, 1 IN_PROGRESS)
         assertEquals(2, response.getUnresolvedIncidentCount());
     }
 
     @Test
     @DisplayName("Average severity is calculated correctly")
     void testAverageSeverityCalculation() {
-        // Arrange
         when(districtRepository.findById(1L)).thenReturn(Optional.of(testDistrict));
         when(incidentRepository.findByDistrictAndStatusIn(
             eq(testDistrict),
-            argThat(list -> list.contains(Incident.IncidentStatus.REPORTED))))
-            .thenReturn(testIncidents.stream()
+            argThat(list -> list.contains(Incident.IncidentStatus.REPORTED)))
+            ).thenReturn(testIncidents.stream()
                 .filter(i -> i.getStatus() == Incident.IncidentStatus.REPORTED || 
                            i.getStatus() == Incident.IncidentStatus.IN_PROGRESS)
                 .toList());
 
-        // Act
         HotspotResponse response = hotspotDetectionService.detectDistrictHotspot(1L);
 
-        // Assert
         assertNotNull(response);
-        // HIGH (4) + CRITICAL (7) / 2 = 5.5
-        assertEquals(5.5, response.getAverageSeverity(), 0.1);
+        // HIGH (4) + CRITICAL (7) / 2 = 5.5 → avgWeight >= 5 → "CRITICAL"
+        assertEquals("CRITICAL", response.getAverageSeverity());
     }
 }

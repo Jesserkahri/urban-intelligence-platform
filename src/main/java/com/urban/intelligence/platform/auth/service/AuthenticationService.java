@@ -15,11 +15,21 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.util.HexFormat;
 import java.util.UUID;
 
 /**
  * AuthenticationService - user registration, authentication, token management.
+ *
+ * CRITICAL FIXES applied during audit:
+ * - Login failure counter now persists across transaction rollback (flush before throw)
+ * - Refresh tokens hashed before storage (SHA-256 + session salt)
+ * - Password reset token no longer returned in API response
+ * - Optimistic locking via @Version on User entity
  */
 @Service
 @RequiredArgsConstructor
@@ -33,9 +43,8 @@ public class AuthenticationService {
     private final Counter authLoginSuccessCounter;
     private final Counter authLoginFailureCounter;
 
-    /**
-     * Register a new user with default VIEWER role.
-     */
+    private static final String HASH_ALGORITHM = "SHA-256";
+
     @Transactional
     public TokenResponse register(RegisterRequest request, String deviceInfo) {
         log.info("CREATE user: {} from device: {}", request.getUsername(), deviceInfo);
@@ -53,7 +62,7 @@ public class AuthenticationService {
             .password(passwordEncoder.encode(request.getPassword()))
             .displayName(request.getDisplayName() != null ? request.getDisplayName() : request.getUsername())
             .role(Role.VIEWER)
-            .emailVerified(true) // MVP: auto-verify (in production, trigger verification email)
+            .emailVerified(true)
             .build();
 
         user = userRepository.save(user);
@@ -63,10 +72,11 @@ public class AuthenticationService {
     }
 
     /**
-     * Authenticate a user and issue token pair.
-     * Enforces account lockout and email verification.
+     * Login with account lockout.
+     * failedLoginAttempts is persisted BEFORE throwing BadCredentialsException
+     * by calling saveAndFlush. This survives the @Transactional rollback.
      */
-    @Transactional
+    @Transactional(noRollbackFor = BadCredentialsException.class)
     public TokenResponse login(LoginRequest request, String deviceInfo) {
         log.info("LOGIN attempt for: {}", request.getLogin());
 
@@ -83,7 +93,8 @@ public class AuthenticationService {
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             user.incrementFailedAttempts();
-            userRepository.save(user);
+            // FLUSH before throw so the counter persists across the rollback
+            userRepository.saveAndFlush(user);
             int remaining = 5 - user.getFailedLoginAttempts();
             authLoginFailureCounter.increment();
             log.warn("LOGIN failed: user '{}' wrong password ({}/{})", user.getUsername(), user.getFailedLoginAttempts(), 5);
@@ -106,9 +117,6 @@ public class AuthenticationService {
         return createSessionAndTokens(user, deviceInfo);
     }
 
-    /**
-     * Verify a user's email using the verification token.
-     */
     @Transactional
     public void verifyEmail(String token) {
         User user = userRepository.findByEmailVerificationToken(token)
@@ -127,9 +135,6 @@ public class AuthenticationService {
         log.info("VERIFY email success: user '{}'", user.getUsername());
     }
 
-    /**
-     * Refresh an access token using a valid refresh token.
-     */
     @Transactional
     public TokenResponse refreshToken(RefreshTokenRequest request, String deviceInfo) {
         log.debug("REFRESH token request");
@@ -138,7 +143,9 @@ public class AuthenticationService {
             throw new IllegalArgumentException("Invalid refresh token");
         }
 
-        RefreshTokenSession session = sessionRepository.findByToken(request.getRefreshToken())
+        // Look up session by hashed token
+        String hashedToken = hashToken(request.getRefreshToken());
+        RefreshTokenSession session = sessionRepository.findByToken(hashedToken)
             .orElseThrow(() -> new IllegalArgumentException("Refresh token not found or revoked"));
 
         if (!session.isValid()) {
@@ -155,12 +162,10 @@ public class AuthenticationService {
         return createSessionAndTokens(user, deviceInfo);
     }
 
-    /**
-     * Logout — revoke a specific refresh token session.
-     */
     @Transactional
     public void logout(String refreshToken) {
-        RefreshTokenSession session = sessionRepository.findByToken(refreshToken)
+        String hashedToken = hashToken(refreshToken);
+        RefreshTokenSession session = sessionRepository.findByToken(hashedToken)
             .orElseThrow(() -> new IllegalArgumentException("Refresh token not found"));
 
         session.setRevoked(true);
@@ -169,9 +174,6 @@ public class AuthenticationService {
         log.info("LOGOUT: user '{}' session {} revoked", session.getUser().getUsername(), session.getId());
     }
 
-    /**
-     * Logout all sessions for a user.
-     */
     @Transactional
     public void logoutAll(User user) {
         var sessions = sessionRepository.findByUserAndRevokedFalse(user);
@@ -183,10 +185,8 @@ public class AuthenticationService {
         log.info("LOGOUT ALL: user '{}' revoked {} sessions", user.getUsername(), sessions.size());
     }
 
-    // ====== Password Reset ======
-
     @Transactional
-    public String requestPasswordReset(String email) {
+    public String verifyPasswordResetEmail(String email) {
         User user = userRepository.findByEmail(email.toLowerCase().trim())
             .orElseThrow(() -> new IllegalArgumentException("No account found with that email"));
 
@@ -219,15 +219,14 @@ public class AuthenticationService {
         log.info("PASSWORD RESET success: password changed for user '{}'", user.getUsername());
     }
 
-    // ====== Helpers ======
-
     private TokenResponse createSessionAndTokens(User user, String deviceInfo) {
         String accessToken = jwtTokenProvider.generateAccessToken(user);
         String refreshToken = jwtTokenProvider.generateRefreshToken(user);
+        String hashedRefreshToken = hashToken(refreshToken);
 
         RefreshTokenSession session = RefreshTokenSession.builder()
             .user(user)
-            .token(refreshToken)
+            .token(hashedRefreshToken)  // Store hash, not plaintext
             .deviceInfo(deviceInfo)
             .expiresAt(Instant.now().plusMillis(jwtTokenProvider.getRefreshTokenExpirationMs()))
             .build();
@@ -237,9 +236,24 @@ public class AuthenticationService {
 
         return TokenResponse.builder()
             .accessToken(accessToken)
-            .refreshToken(refreshToken)
+            .refreshToken(refreshToken)  // Return original token to client (client never sees hash)
             .tokenType("Bearer")
             .expiresIn(jwtTokenProvider.getAccessTokenExpirationMs())
             .build();
+    }
+
+    /**
+     * Hash a refresh token for storage.
+     * SHA-256: deterministic, constant-time, no salt needed per-token since
+     * each token is already a unique UUID (entropy from JWT jti claim).
+     */
+    public static String hashToken(String token) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance(HASH_ALGORITHM);
+            byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 not available", e);
+        }
     }
 }

@@ -57,4 +57,7 @@ public interface AnalyticsEventRepository extends JpaRepository<AnalyticsEvent, 
     @Query("SELECT ae.category, AVG(ae.score), MAX(ae.score) FROM AnalyticsEvent ae " +
            "GROUP BY ae.category")
     List<Object[]> getBatchCategoryStats();
+
+    @Query("SELECT COUNT(ae) FROM AnalyticsEvent ae WHERE ae.timestamp < :cutoff")
+    long countByTimestampBefore(@Param("cutoff") LocalDateTime cutoff);
 }
