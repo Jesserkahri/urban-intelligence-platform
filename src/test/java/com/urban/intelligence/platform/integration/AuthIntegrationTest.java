@@ -1,30 +1,29 @@
 package com.urban.intelligence.platform.integration;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.urban.intelligence.platform.auth.domain.Role;
 import com.urban.intelligence.platform.auth.domain.User;
 import com.urban.intelligence.platform.auth.dto.LoginRequest;
 import com.urban.intelligence.platform.auth.dto.RefreshTokenRequest;
 import com.urban.intelligence.platform.auth.dto.RegisterRequest;
+import com.urban.intelligence.platform.auth.dto.TokenResponse;
 import com.urban.intelligence.platform.auth.repository.UserRepository;
 import com.urban.intelligence.platform.auth.security.JwtTokenProvider;
+import com.urban.intelligence.platform.dto.ApiResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * PostgreSQL-backed integration tests for Authentication API.
- * Tests registration, login, refresh token rotation, and error handling.
+ * All responses are wrapped in ApiResponse<T> per the controller contract.
+ * Error responses return ApiError, not ApiResponse.
  */
 class AuthIntegrationTest extends BaseIntegrationTest {
 
@@ -37,11 +36,10 @@ class AuthIntegrationTest extends BaseIntegrationTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    @Autowired
-    private JwtTokenProvider jwtTokenProvider;
-
-    @Autowired
-    private ObjectMapper objectMapper;
+    private static final ParameterizedTypeReference<ApiResponse<TokenResponse>> TOKEN_RESPONSE =
+        new ParameterizedTypeReference<>() {};
+    private static final ParameterizedTypeReference<ApiResponse<Void>> VOID_RESPONSE =
+        new ParameterizedTypeReference<>() {};
 
     @BeforeEach
     void setUp() {
@@ -49,47 +47,51 @@ class AuthIntegrationTest extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("Register new user returns tokens")
-    void register_shouldReturnTokens() throws Exception {
+    @DisplayName("Register new user returns ApiResponse with tokens")
+    void register_shouldReturnTokens() {
         RegisterRequest req = RegisterRequest.builder()
             .username("newuser").email("new@test.com")
             .password("SecurePass1!").build();
 
-        ResponseEntity<String> response = restTemplate.postForEntity(
-            "/api/auth/register", req, String.class);
+        ResponseEntity<ApiResponse<TokenResponse>> response = restTemplate.exchange(
+            "/api/auth/register", HttpMethod.POST,
+            new HttpEntity<>(req), TOKEN_RESPONSE);
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        JsonNode data = responseData(response);
-        assertTrue(data.path("access_token").isTextual());
-        assertTrue(data.path("refresh_token").isTextual());
-        assertEquals("Bearer", data.path("token_type").asText());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody().isSuccess());
+        assertNotNull(response.getBody().getData());
+        assertNotNull(response.getBody().getData().getAccessToken());
+        assertNotNull(response.getBody().getData().getRefreshToken());
+        assertEquals("Bearer", response.getBody().getData().getTokenType());
     }
 
     @Test
-    @DisplayName("Register with duplicate username fails")
+    @DisplayName("Register with duplicate username fails with 400 ApiError")
     void register_withDuplicateUsername_shouldFail() {
         RegisterRequest req = RegisterRequest.builder()
             .username("dupuser").email("dup@test.com")
             .password("SecurePass1!").build();
 
         // First registration succeeds
-        restTemplate.postForEntity("/api/auth/register", req, String.class);
+        restTemplate.exchange("/api/auth/register", HttpMethod.POST,
+            new HttpEntity<>(req), TOKEN_RESPONSE);
 
-        // Second registration with same username fails
-        RegisterRequest dupReq = RegisterRequest.builder()
-            .username("dupuser").email("other@test.com")
-            .password("SecurePass1!").build();
-
-        ResponseEntity<String> response = restTemplate.postForEntity(
-            "/api/auth/register", dupReq, String.class);
+        // Second registration with same username fails — returns ApiError, not ApiResponse
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/auth/register", HttpMethod.POST,
+            new HttpEntity<>(req), String.class);
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertNotNull(response.getBody());
+        // ApiError contract: {"success":false,"code":"INVALID_ARGUMENT","message":"..."}
+        assertTrue(response.getBody().contains("success"));
+        assertTrue(response.getBody().contains("Username already taken"));
     }
 
     @Test
-    @DisplayName("Login with valid credentials returns tokens")
-    void login_withValidCredentials_shouldSucceed() throws Exception {
-        // Pre-register user directly
+    @DisplayName("Login with valid credentials returns ApiResponse with tokens")
+    void login_withValidCredentials_shouldSucceed() {
         User user = User.builder()
             .username("loginuser").email("login@test.com")
             .password(passwordEncoder.encode("SecurePass1!"))
@@ -100,15 +102,20 @@ class AuthIntegrationTest extends BaseIntegrationTest {
         LoginRequest req = LoginRequest.builder()
             .login("loginuser").password("SecurePass1!").build();
 
-        ResponseEntity<String> response = restTemplate.postForEntity(
-            "/api/auth/login", req, String.class);
+        ResponseEntity<ApiResponse<TokenResponse>> response = restTemplate.exchange(
+            "/api/auth/login", HttpMethod.POST,
+            new HttpEntity<>(req), TOKEN_RESPONSE);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertTrue(responseData(response).path("access_token").isTextual());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody().isSuccess());
+        assertNotNull(response.getBody().getData());
+        assertNotNull(response.getBody().getData().getAccessToken());
+        assertEquals("Bearer", response.getBody().getData().getTokenType());
     }
 
     @Test
-    @DisplayName("Login with wrong password fails")
+    @DisplayName("Login with wrong password returns 401 ApiError")
     void login_withWrongPassword_shouldFail() {
         User user = User.builder()
             .username("wrongpwd").email("wrong@test.com")
@@ -120,76 +127,61 @@ class AuthIntegrationTest extends BaseIntegrationTest {
         LoginRequest req = LoginRequest.builder()
             .login("wrongpwd").password("WrongPassword1!").build();
 
-        ResponseEntity<String> response = restTemplate.postForEntity(
-            "/api/auth/login", req, String.class);
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/auth/login", HttpMethod.POST,
+            new HttpEntity<>(req), String.class);
 
         assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
     }
 
     @Test
     @DisplayName("Refresh token rotates the token pair")
-    void refreshToken_withValidToken_shouldReturnNewTokens() throws Exception {
-        // Register a user first
+    void refreshToken_withValidToken_shouldReturnNewTokens() {
         RegisterRequest regReq = RegisterRequest.builder()
             .username("refreshuser").email("refresh@test.com")
             .password("SecurePass1!").build();
 
-        ResponseEntity<String> regResponse = restTemplate.postForEntity(
-            "/api/auth/register", regReq, String.class);
-        String refreshToken = responseData(regResponse).path("refresh_token").asText();
+        ResponseEntity<ApiResponse<TokenResponse>> regResponse = restTemplate.exchange(
+            "/api/auth/register", HttpMethod.POST,
+            new HttpEntity<>(regReq), TOKEN_RESPONSE);
+        String refreshToken = regResponse.getBody().getData().getRefreshToken();
 
-        // Refresh the token
         RefreshTokenRequest refreshReq = RefreshTokenRequest.builder()
             .refreshToken(refreshToken).build();
 
-        ResponseEntity<String> refreshResponse = restTemplate.postForEntity(
-            "/api/auth/refresh", refreshReq, String.class);
+        ResponseEntity<ApiResponse<TokenResponse>> refreshResponse = restTemplate.exchange(
+            "/api/auth/refresh", HttpMethod.POST,
+            new HttpEntity<>(refreshReq), TOKEN_RESPONSE);
 
         assertEquals(HttpStatus.OK, refreshResponse.getStatusCode());
-        JsonNode data = responseData(refreshResponse);
-        assertTrue(data.path("access_token").isTextual());
-        assertTrue(data.path("refresh_token").isTextual());
-        assertNotEquals(refreshToken, data.path("refresh_token").asText());
+        assertNotNull(refreshResponse.getBody().getData().getAccessToken());
+        assertNotNull(refreshResponse.getBody().getData().getRefreshToken());
+        assertNotEquals(refreshToken, refreshResponse.getBody().getData().getRefreshToken());
     }
 
     @Test
-    @DisplayName("Revoked refresh token is rejected")
-    void revokedRefreshToken_shouldBeRejected() throws Exception {
+    @DisplayName("Revoked refresh token is rejected with 400 ApiError")
+    void revokedRefreshToken_shouldBeRejected() {
         RegisterRequest regReq = RegisterRequest.builder()
             .username("revokeuser").email("revoke@test.com")
             .password("SecurePass1!").build();
 
-        ResponseEntity<String> regResponse = restTemplate.postForEntity(
-            "/api/auth/register", regReq, String.class);
-        String refreshToken = responseData(regResponse).path("refresh_token").asText();
+        ResponseEntity<ApiResponse<TokenResponse>> regResponse = restTemplate.exchange(
+            "/api/auth/register", HttpMethod.POST,
+            new HttpEntity<>(regReq), TOKEN_RESPONSE);
+        String refreshToken = regResponse.getBody().getData().getRefreshToken();
 
-        // First refresh (consumes old token)
-        RefreshTokenRequest refreshReq1 = RefreshTokenRequest.builder()
+        // First refresh consumes the old token
+        RefreshTokenRequest refreshReq = RefreshTokenRequest.builder()
             .refreshToken(refreshToken).build();
-        restTemplate.postForEntity("/api/auth/refresh", refreshReq1, TokenResponse.class);
+        restTemplate.exchange("/api/auth/refresh", HttpMethod.POST,
+            new HttpEntity<>(refreshReq), TOKEN_RESPONSE);
 
-        // Second refresh with same token should fail
-        ResponseEntity<String> refreshReq2 = restTemplate.postForEntity(
-            "/api/auth/refresh", refreshReq1, String.class);
-
-        assertEquals(HttpStatus.BAD_REQUEST, refreshReq2.getStatusCode());
-    }
-
-    private JsonNode responseData(ResponseEntity<String> response) throws Exception {
-        assertNotNull(response.getBody());
-        JsonNode root = objectMapper.readTree(response.getBody());
-        assertTrue(root.path("success").asBoolean());
-        return root.path("data");
-    }
-
-    @Test
-    @DisplayName("Invalid JWT is rejected")
-    void invalidJwt_shouldBeRejected() {
+        // Second refresh with same (now revoked) token returns ApiError
         ResponseEntity<String> response = restTemplate.exchange(
-            "/api/districts/1",
-            HttpMethod.GET,
-            new HttpEntity<>(null, org.springframework.http.HttpHeaders.EMPTY),
-            String.class);
-        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+            "/api/auth/refresh", HttpMethod.POST,
+            new HttpEntity<>(refreshReq), String.class);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     }
 }

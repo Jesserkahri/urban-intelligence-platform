@@ -49,6 +49,71 @@
       "name": "app.analytics.incident-density-threshold",
       "type": "java.lang.Double",
       "description": "Incident count threshold for high-density zones."
+    },
+    {
+      "name": "app.jwt.refresh-expiration",
+      "type": "java.lang.String",
+      "description": "A description for 'app.jwt.refresh-expiration'"
+    },
+    {
+      "name": "app.name",
+      "type": "java.lang.String",
+      "description": "Application display name."
+    },
+    {
+      "name": "app.version",
+      "type": "java.lang.String",
+      "description": "Application version."
+    },
+    {
+      "name": "app.description",
+      "type": "java.lang.String",
+      "description": "Application description."
+    },
+    {
+      "name": "app.jwt.secret",
+      "type": "java.lang.String",
+      "description": "JWT signing secret (from environment variable JWT_SECRET)."
+    },
+    {
+      "name": "app.jwt.expiration",
+      "type": "java.lang.Long",
+      "description": "JWT access token expiration in milliseconds."
+    },
+    {
+      "name": "app.jwt.refresh-expiration",
+      "type": "java.lang.Long",
+      "description": "JWT refresh token expiration in milliseconds."
+    },
+    {
+      "name": "app.jwt.issuer",
+      "type": "java.lang.String",
+      "description": "JWT token issuer identifier."
+    },
+    {
+      "name": "app.jwt.audience",
+      "type": "java.lang.String",
+      "description": "JWT token intended audience."
+    },
+    {
+      "name": "app.cors.allowed-origins",
+      "type": "java.lang.String",
+      "description": "Comma-separated list of allowed CORS origins."
+    },
+    {
+      "name": "app.analytics.hotspot-threshold",
+      "type": "java.lang.Double",
+      "description": "Minimum score to classify an area as a hotspot."
+    },
+    {
+      "name": "app.analytics.cluster-radius",
+      "type": "java.lang.Double",
+      "description": "Radius in degrees used for incident clustering."
+    },
+    {
+      "name": "app.analytics.incident-density-threshold",
+      "type": "java.lang.Double",
+      "description": "Incident count threshold for density alerts."
     }
   ]
 }
