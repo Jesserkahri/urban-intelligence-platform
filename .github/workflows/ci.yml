@@ -39,5 +39,10 @@ jobs:
       - name: Run tests
         run: mvn -B test
 
+      - name: Print surefire failure reports
+        if: failure()
+        run: |
+        find target/surefire-reports -name "*.txt" | head -5 | xargs cat
+
       - name: Build Docker image (validate only)
         run: docker build -t urban-intelligence-platform --platform linux/amd64 .
