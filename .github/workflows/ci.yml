@@ -9,6 +9,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend # ← fixes the Maven "no POM" error
     env:
       SPRING_PROFILES_ACTIVE: test
       JWT_SECRET: test-secret-key-for-ci-min-256-bits-long-value
@@ -26,7 +29,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          key: ${{ runner.os }}-maven-${{ hashFiles('backend/pom.xml') }} # ← scoped path
           restore-keys: |
             ${{ runner.os }}-maven-
 
@@ -41,8 +44,7 @@ jobs:
 
       - name: Print surefire failure reports
         if: failure()
-        run: |
-          find target/surefire-reports -name "*.txt" | head -5 | xargs cat
+        run: find target/surefire-reports -name "*.txt" | head -5 | xargs cat
 
       - name: Build Docker image (validate only)
-        run: docker build -t urban-intelligence-platform --platform linux/amd64 .
+        run: docker build -t urban-intelligence-platform --platform linux/amd64 . # ← Dockerfile is now in ./backend, so this still works
