@@ -79,7 +79,8 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             // Correlation ID runs before JWT filter to set MDC early
-            .addFilterBefore(correlationIdFilter, JwtAuthenticationFilter.class)
+            // Anchor both custom filters to a registered Spring Security filter
+            .addFilterBefore(correlationIdFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
