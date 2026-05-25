@@ -148,14 +148,17 @@ public class AuthenticationService {
         RefreshTokenSession session = sessionRepository.findByToken(hashedToken)
             .orElseThrow(() -> new IllegalArgumentException("Refresh token not found or revoked"));
 
+        Instant now = Instant.now();
         if (!session.isValid()) {
             log.warn("REFRESH failed: session {} expired or revoked", session.getId());
             throw new IllegalArgumentException("Refresh token expired or has been revoked");
         }
 
-        session.setRevoked(true);
-        session.setRevokedAt(Instant.now());
-        sessionRepository.save(session);
+        int revoked = sessionRepository.revokeIfValid(session.getId(), now, now);
+        if (revoked != 1) {
+            log.warn("REFRESH replay/race rejected: session {}", session.getId());
+            throw new IllegalArgumentException("Refresh token expired or has been revoked");
+        }
 
         User user = session.getUser();
         log.info("REFRESH success: user '{}' session rotated", user.getUsername());

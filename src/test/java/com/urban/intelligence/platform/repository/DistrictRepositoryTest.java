@@ -2,12 +2,11 @@ package com.urban.intelligence.platform.repository;
 
 import com.urban.intelligence.platform.domain.entity.District;
 import com.urban.intelligence.platform.domain.repository.DistrictRepository;
+import com.urban.intelligence.platform.integration.BaseIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 
 import java.util.List;
 import java.util.Optional;
@@ -15,18 +14,15 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Repository tests for DistrictRepository
- * Tests custom query methods and filtering using in-memory H2 database
+ * Repository tests for DistrictRepository.
+ * Runs against PostgreSQL Testcontainers so custom queries are validated
+ * against the same dialect as production.
  */
-@DataJpaTest
 @DisplayName("DistrictRepository Tests")
-class DistrictRepositoryTest {
+class DistrictRepositoryTest extends BaseIntegrationTest {
 
     @Autowired
     private DistrictRepository districtRepository;
-
-    @Autowired
-    private TestEntityManager entityManager;
 
     private District district1;
     private District district2;
@@ -34,6 +30,8 @@ class DistrictRepositoryTest {
 
     @BeforeEach
     void setUp() {
+        districtRepository.deleteAll();
+
         // Create test districts
         district1 = District.builder()
             .name("High Risk District")
@@ -56,9 +54,10 @@ class DistrictRepositoryTest {
             .operationalRiskScore(55.0)
             .build();
 
-        entityManager.persistAndFlush(district1);
-        entityManager.persistAndFlush(district2);
-        entityManager.persistAndFlush(district3);
+        List<District> savedDistricts = districtRepository.saveAll(List.of(district1, district2, district3));
+        district1 = savedDistricts.get(0);
+        district2 = savedDistricts.get(1);
+        district3 = savedDistricts.get(2);
     }
 
     @Test

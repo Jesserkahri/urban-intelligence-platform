@@ -1,6 +1,7 @@
 package com.urban.intelligence.platform.integration;
 
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -13,6 +14,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * Uses a shared Testcontainer that runs Flyway migrations automatically.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Testcontainers
 public abstract class BaseIntegrationTest {

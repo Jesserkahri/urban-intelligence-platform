@@ -1,11 +1,12 @@
 package com.urban.intelligence.platform.integration;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.urban.intelligence.platform.auth.domain.Role;
 import com.urban.intelligence.platform.auth.domain.User;
 import com.urban.intelligence.platform.auth.dto.LoginRequest;
 import com.urban.intelligence.platform.auth.dto.RefreshTokenRequest;
 import com.urban.intelligence.platform.auth.dto.RegisterRequest;
-import com.urban.intelligence.platform.auth.dto.TokenResponse;
 import com.urban.intelligence.platform.auth.repository.UserRepository;
 import com.urban.intelligence.platform.auth.security.JwtTokenProvider;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,6 +40,9 @@ class AuthIntegrationTest extends BaseIntegrationTest {
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     @BeforeEach
     void setUp() {
         userRepository.deleteAll();
@@ -46,19 +50,19 @@ class AuthIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Register new user returns tokens")
-    void register_shouldReturnTokens() {
+    void register_shouldReturnTokens() throws Exception {
         RegisterRequest req = RegisterRequest.builder()
             .username("newuser").email("new@test.com")
             .password("SecurePass1!").build();
 
-        ResponseEntity<TokenResponse> response = restTemplate.postForEntity(
-            "/api/auth/register", req, TokenResponse.class);
+        ResponseEntity<String> response = restTemplate.postForEntity(
+            "/api/auth/register", req, String.class);
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertNotNull(response.getBody().getAccessToken());
-        assertNotNull(response.getBody().getRefreshToken());
-        assertEquals("Bearer", response.getBody().getTokenType());
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        JsonNode data = responseData(response);
+        assertTrue(data.path("access_token").isTextual());
+        assertTrue(data.path("refresh_token").isTextual());
+        assertEquals("Bearer", data.path("token_type").asText());
     }
 
     @Test
@@ -69,7 +73,7 @@ class AuthIntegrationTest extends BaseIntegrationTest {
             .password("SecurePass1!").build();
 
         // First registration succeeds
-        restTemplate.postForEntity("/api/auth/register", req, TokenResponse.class);
+        restTemplate.postForEntity("/api/auth/register", req, String.class);
 
         // Second registration with same username fails
         RegisterRequest dupReq = RegisterRequest.builder()
@@ -84,7 +88,7 @@ class AuthIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Login with valid credentials returns tokens")
-    void login_withValidCredentials_shouldSucceed() {
+    void login_withValidCredentials_shouldSucceed() throws Exception {
         // Pre-register user directly
         User user = User.builder()
             .username("loginuser").email("login@test.com")
@@ -96,12 +100,11 @@ class AuthIntegrationTest extends BaseIntegrationTest {
         LoginRequest req = LoginRequest.builder()
             .login("loginuser").password("SecurePass1!").build();
 
-        ResponseEntity<TokenResponse> response = restTemplate.postForEntity(
-            "/api/auth/login", req, TokenResponse.class);
+        ResponseEntity<String> response = restTemplate.postForEntity(
+            "/api/auth/login", req, String.class);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertNotNull(response.getBody().getAccessToken());
+        assertTrue(responseData(response).path("access_token").isTextual());
     }
 
     @Test
@@ -125,39 +128,40 @@ class AuthIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Refresh token rotates the token pair")
-    void refreshToken_withValidToken_shouldReturnNewTokens() {
+    void refreshToken_withValidToken_shouldReturnNewTokens() throws Exception {
         // Register a user first
         RegisterRequest regReq = RegisterRequest.builder()
             .username("refreshuser").email("refresh@test.com")
             .password("SecurePass1!").build();
 
-        ResponseEntity<TokenResponse> regResponse = restTemplate.postForEntity(
-            "/api/auth/register", regReq, TokenResponse.class);
-        String refreshToken = regResponse.getBody().getRefreshToken();
+        ResponseEntity<String> regResponse = restTemplate.postForEntity(
+            "/api/auth/register", regReq, String.class);
+        String refreshToken = responseData(regResponse).path("refresh_token").asText();
 
         // Refresh the token
         RefreshTokenRequest refreshReq = RefreshTokenRequest.builder()
             .refreshToken(refreshToken).build();
 
-        ResponseEntity<TokenResponse> refreshResponse = restTemplate.postForEntity(
-            "/api/auth/refresh", refreshReq, TokenResponse.class);
+        ResponseEntity<String> refreshResponse = restTemplate.postForEntity(
+            "/api/auth/refresh", refreshReq, String.class);
 
         assertEquals(HttpStatus.OK, refreshResponse.getStatusCode());
-        assertNotNull(refreshResponse.getBody().getAccessToken());
-        assertNotNull(refreshResponse.getBody().getRefreshToken());
-        assertNotEquals(refreshToken, refreshResponse.getBody().getRefreshToken());
+        JsonNode data = responseData(refreshResponse);
+        assertTrue(data.path("access_token").isTextual());
+        assertTrue(data.path("refresh_token").isTextual());
+        assertNotEquals(refreshToken, data.path("refresh_token").asText());
     }
 
     @Test
     @DisplayName("Revoked refresh token is rejected")
-    void revokedRefreshToken_shouldBeRejected() {
+    void revokedRefreshToken_shouldBeRejected() throws Exception {
         RegisterRequest regReq = RegisterRequest.builder()
             .username("revokeuser").email("revoke@test.com")
             .password("SecurePass1!").build();
 
-        ResponseEntity<TokenResponse> regResponse = restTemplate.postForEntity(
-            "/api/auth/register", regReq, TokenResponse.class);
-        String refreshToken = regResponse.getBody().getRefreshToken();
+        ResponseEntity<String> regResponse = restTemplate.postForEntity(
+            "/api/auth/register", regReq, String.class);
+        String refreshToken = responseData(regResponse).path("refresh_token").asText();
 
         // First refresh (consumes old token)
         RefreshTokenRequest refreshReq1 = RefreshTokenRequest.builder()
@@ -169,6 +173,13 @@ class AuthIntegrationTest extends BaseIntegrationTest {
             "/api/auth/refresh", refreshReq1, String.class);
 
         assertEquals(HttpStatus.BAD_REQUEST, refreshReq2.getStatusCode());
+    }
+
+    private JsonNode responseData(ResponseEntity<String> response) throws Exception {
+        assertNotNull(response.getBody());
+        JsonNode root = objectMapper.readTree(response.getBody());
+        assertTrue(root.path("success").asBoolean());
+        return root.path("data");
     }
 
     @Test

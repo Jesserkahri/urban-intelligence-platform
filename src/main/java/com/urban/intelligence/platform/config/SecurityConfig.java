@@ -71,10 +71,9 @@ public class SecurityConfig {
                 .requestMatchers("/api/docs/**").permitAll()
                 .requestMatchers("/swagger-ui/**").permitAll()
                 .requestMatchers("/v3/api-docs/**").permitAll()
-                // Actuator: health/info/metrics public, rest requires ADMIN
+                // Actuator: health/info public, operational metrics require ADMIN
                 .requestMatchers("/actuator/health/**").permitAll()
                 .requestMatchers("/actuator/info").permitAll()
-                .requestMatchers("/actuator/metrics").permitAll()
                 .requestMatchers("/actuator/**").hasRole("ADMIN")
                 // Everything else requires authentication
                 .anyRequest().authenticated()

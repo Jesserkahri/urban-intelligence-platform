@@ -160,6 +160,7 @@ class AuthenticationServiceTest {
         when(jwtTokenProvider.isRefreshToken(token)).thenReturn(true);
         when(sessionRepository.findByToken(AuthenticationService.hashToken(token)))
             .thenReturn(Optional.of(oldSession));
+        when(sessionRepository.revokeIfValid(eq(1L), any(), any())).thenReturn(1);
         when(jwtTokenProvider.generateAccessToken(any(User.class))).thenReturn("new_access_token");
         when(jwtTokenProvider.generateRefreshToken(any(User.class))).thenReturn("new_refresh_token");
         when(jwtTokenProvider.getAccessTokenExpirationMs()).thenReturn(900000L);
@@ -172,6 +173,7 @@ class AuthenticationServiceTest {
         assertNotNull(response);
         assertEquals("new_access_token", response.getAccessToken());
         assertEquals("new_refresh_token", response.getRefreshToken());
+        verify(sessionRepository).revokeIfValid(eq(1L), any(), any());
     }
 
     @Test

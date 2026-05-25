@@ -1,6 +1,7 @@
 package com.urban.intelligence.platform.config;
 
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -33,60 +34,36 @@ public class JwtProperties {
 
     public JwtProperties(Environment environment) {
         this.environment = environment;
-        initializeFromEnvironment();
     }
 
     /**
-     * Initialize JWT secret from environment variables.
-     * Fails fast in production if JWT_SECRET is not configured.
+     * Validate bound JWT configuration after Spring has applied environment
+     * variables such as JWT_SECRET or APP_JWT_SECRET.
      */
-    private void initializeFromEnvironment() {
-        // Try to read JWT_SECRET from environment variables
-        String envSecret = environment.getProperty("JWT_SECRET");
-        
-        if (envSecret != null && !envSecret.isBlank()) {
-            this.secret = envSecret;
-        } else {
-            // Check if we're in production
-            String[] activeProfiles = environment.getActiveProfiles();
-            boolean isProduction = false;
-            for (String profile : activeProfiles) {
-                if ("prod".equalsIgnoreCase(profile) || "production".equalsIgnoreCase(profile)) {
-                    isProduction = true;
-                    break;
-                }
-            }
-
-            if (isProduction) {
-                throw new IllegalStateException(
-                    "JWT_SECRET environment variable is required for production deployment. " +
-                    "Set JWT_SECRET with a cryptographically secure 256-bit key. " +
-                    "Example: openssl rand -base64 32"
-                );
-            }
-            
-            // Use a temporary dev secret (should not be used in prod)
-            this.secret = "dev-secret-key-change-in-production-xxxxxxxxxxxxxxxx";
+    @PostConstruct
+    void validateConfiguration() {
+        if (secret != null && !secret.isBlank()) {
+            return;
         }
 
-        // Read optional JWT expiration times
-        String expirationMs = environment.getProperty("JWT_EXPIRATION_MS");
-        if (expirationMs != null && !expirationMs.isBlank()) {
-            try {
-                this.expiration = Long.parseLong(expirationMs);
-            } catch (NumberFormatException e) {
-                // Keep default
+        boolean isProduction = false;
+        for (String profile : environment.getActiveProfiles()) {
+            if ("prod".equalsIgnoreCase(profile) || "production".equalsIgnoreCase(profile)) {
+                isProduction = true;
+                break;
             }
         }
 
-        String refreshExpirationMs = environment.getProperty("JWT_REFRESH_EXPIRATION_MS");
-        if (refreshExpirationMs != null && !refreshExpirationMs.isBlank()) {
-            try {
-                this.refreshExpiration = Long.parseLong(refreshExpirationMs);
-            } catch (NumberFormatException e) {
-                // Keep default
-            }
+        if (isProduction) {
+            throw new IllegalStateException(
+                "JWT secret is required for production deployment. " +
+                "Set JWT_SECRET or APP_JWT_SECRET with a cryptographically secure 256-bit key. " +
+                "Example: openssl rand -base64 32"
+            );
         }
+
+        // Non-production fallback only; application.properties has no hardcoded prod secret.
+        this.secret = "dev-secret-key-change-in-production-xxxxxxxxxxxxxxxx";
     }
 
     /**

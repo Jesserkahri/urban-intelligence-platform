@@ -1,5 +1,7 @@
 package com.urban.intelligence.platform.integration;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.urban.intelligence.platform.auth.domain.Role;
 import com.urban.intelligence.platform.auth.domain.User;
 import com.urban.intelligence.platform.auth.repository.UserRepository;
@@ -7,7 +9,6 @@ import com.urban.intelligence.platform.auth.security.JwtTokenProvider;
 import com.urban.intelligence.platform.domain.entity.District;
 import com.urban.intelligence.platform.domain.repository.DistrictRepository;
 import com.urban.intelligence.platform.dto.DistrictCreateRequest;
-import com.urban.intelligence.platform.dto.DistrictResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,9 @@ class DistrictIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     private String adminToken;
 
@@ -66,33 +70,31 @@ class DistrictIntegrationTest extends BaseIntegrationTest {
 
     @Test
     @DisplayName("POST /api/districts creates district")
-    void createDistrict_shouldReturnDistrict() {
+    void createDistrict_shouldReturnDistrict() throws Exception {
         DistrictCreateRequest req = DistrictCreateRequest.builder()
             .name("Integration District").population(50000)
             .sustainabilityScore(70.0).operationalRiskScore(30.0).build();
 
-        ResponseEntity<DistrictResponse> response = restTemplate.exchange(
-            "/api/districts", HttpMethod.POST, authRequest(req), DistrictResponse.class);
+        ResponseEntity<String> response = restTemplate.exchange(
+            "/api/districts", HttpMethod.POST, authRequest(req), String.class);
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertEquals("Integration District", response.getBody().getName());
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        assertEquals("Integration District", responseData(response).path("name").asText());
     }
 
     @Test
     @DisplayName("GET /api/districts/{id} returns district")
-    void getDistrict_shouldReturnDistrict() {
+    void getDistrict_shouldReturnDistrict() throws Exception {
         District district = districtRepository.save(District.builder()
             .name("TestDistrict").population(10000)
             .sustainabilityScore(60.0).operationalRiskScore(40.0).build());
 
-        ResponseEntity<DistrictResponse> response = restTemplate.exchange(
+        ResponseEntity<String> response = restTemplate.exchange(
             "/api/districts/" + district.getId(),
-            HttpMethod.GET, authRequest(null), DistrictResponse.class);
+            HttpMethod.GET, authRequest(null), String.class);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertEquals("TestDistrict", response.getBody().getName());
+        assertEquals("TestDistrict", responseData(response).path("name").asText());
     }
 
     @Test
@@ -106,13 +108,13 @@ class DistrictIntegrationTest extends BaseIntegrationTest {
             "/api/districts/" + district.getId(),
             HttpMethod.DELETE, authRequest(null), Void.class);
 
-        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
         assertFalse(districtRepository.existsById(district.getId()));
     }
 
     @Test
     @DisplayName("PUT /api/districts/{id} updates district")
-    void updateDistrict_shouldReturnUpdatedDistrict() {
+    void updateDistrict_shouldReturnUpdatedDistrict() throws Exception {
         District district = districtRepository.save(District.builder()
             .name("UpdateDistrict").population(10000)
             .sustainabilityScore(60.0).operationalRiskScore(40.0).build());
@@ -122,13 +124,20 @@ class DistrictIntegrationTest extends BaseIntegrationTest {
         headers.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<String> req = new HttpEntity<>("{\"population\": 20000, \"sustainabilityScore\": 80.0}", headers);
 
-        @SuppressWarnings("unchecked")
-        ResponseEntity<DistrictResponse> response = (ResponseEntity) restTemplate.exchange(
+        ResponseEntity<String> response = restTemplate.exchange(
             "/api/districts/" + district.getId(),
-            HttpMethod.PUT, req, DistrictResponse.class);
+            HttpMethod.PUT, req, String.class);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(20000, response.getBody().getPopulation());
-        assertEquals(80.0, response.getBody().getSustainabilityScore());
+        JsonNode data = responseData(response);
+        assertEquals(20000, data.path("population").asInt());
+        assertEquals(80.0, data.path("sustainability_score").asDouble());
+    }
+
+    private JsonNode responseData(ResponseEntity<String> response) throws Exception {
+        assertNotNull(response.getBody());
+        JsonNode root = objectMapper.readTree(response.getBody());
+        assertTrue(root.path("success").asBoolean());
+        return root.path("data");
     }
 }

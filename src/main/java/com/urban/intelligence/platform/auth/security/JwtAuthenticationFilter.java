@@ -4,6 +4,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
@@ -42,14 +43,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String jwt = extractJwtFromRequest(request);
 
-            if (StringUtils.hasText(jwt) && jwtTokenProvider.isRefreshToken(jwt)) {
-                log.debug("Refresh token detected in Authorization header - rejecting for API access");
-                filterChain.doFilter(request, response);
-                return;
-            }
-
             if (StringUtils.hasText(jwt)) {
-                String username = jwtTokenProvider.getUsernameFromToken(jwt);
+                Claims claims = jwtTokenProvider.validateToken(jwt);
+
+                if ("refresh".equals(claims.get("type"))) {
+                    log.debug("Refresh token detected in Authorization header - rejecting for API access");
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
+                String username = claims.getSubject();
 
                 if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                     UserDetails userDetails = userDetailsService.loadUserByUsername(username);
