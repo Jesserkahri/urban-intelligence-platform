@@ -27,6 +27,17 @@ public class AuthenticationController {
     private final AuthenticationService authenticationService;
     private final LoginRateLimiter loginRateLimiter;
 
+    /**
+     * Get the currently authenticated user's profile.
+     */
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<UserResponse>> getCurrentUser(
+            @AuthenticationPrincipal User user) {
+        log.debug("GET current user: {}", user.getUsername());
+        UserResponse userResponse = UserResponse.from(user);
+        return ResponseEntity.ok(ApiResponse.success(userResponse, "Current user retrieved"));
+    }
+
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<TokenResponse>> register(
             @Valid @RequestBody RegisterRequest request,
