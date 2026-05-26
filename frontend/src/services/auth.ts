@@ -5,7 +5,7 @@ export class AuthService {
     credentials: LoginRequest,
   ): Promise<{ user: User; tokens: TokenResponse }> {
     const response = await apiClient.post<ApiResponse<TokenResponse>>(
-      "/auth/login",
+      "/api/auth/login",
       credentials,
     );
 
@@ -26,7 +26,7 @@ export class AuthService {
   async logout(): Promise<void> {
     try {
       const tokens = apiClient.getTokens();
-      await apiClient.post("/auth/logout", {
+      await apiClient.post("/api/auth/logout", {
         refreshToken: tokens?.refreshToken,
       });
     } catch (error) {
@@ -36,7 +36,7 @@ export class AuthService {
   }
 
   async getCurrentUser(): Promise<User> {
-    const response = await apiClient.get<ApiResponse<User>>("/auth/me");
+    const response = await apiClient.get<ApiResponse<User>>("/api/auth/me");
     if (!response.data.success || !response.data.data) {
       throw new Error("Failed to fetch current user");
     }
@@ -45,7 +45,7 @@ export class AuthService {
 
   async refreshToken(refreshToken: string): Promise<TokenResponse> {
     const response = await apiClient.post<ApiResponse<TokenResponse>>(
-      "/auth/refresh",
+      "/api/auth/refresh",
       {
         refreshToken,
       },

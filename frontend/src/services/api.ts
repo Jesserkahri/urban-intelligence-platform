@@ -5,8 +5,7 @@ import axios, {
 } from "axios";
 import { TokenResponse, ApiError } from "@appTypes/api"; // ← fixed
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:8080/api";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
 const TOKENS_STORAGE_KEY = "auth_tokens";
 
 // ← moved up: was defined after the class that uses it
@@ -87,7 +86,7 @@ class ApiClient {
   async refreshAccessToken(refreshToken: string): Promise<string> {
     try {
       const response = await axios.post<ApiResponse<TokenResponse>>(
-        `${API_BASE_URL}/auth/refresh`,
+        `${API_BASE_URL}/api/auth/refresh`,
         { refreshToken },
       );
       const newTokens = response.data.data;
