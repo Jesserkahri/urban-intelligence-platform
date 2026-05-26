@@ -1,6 +1,5 @@
 import { apiClient, ApiResponse } from "./api";
-import { LoginRequest, TokenResponse, User } from "@types/api";
-
+import { LoginRequest, TokenResponse, User } from "../types/api";
 export class AuthService {
   async login(
     credentials: LoginRequest,

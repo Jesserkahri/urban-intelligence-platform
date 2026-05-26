@@ -6,7 +6,7 @@ import React, {
   ReactNode,
 } from "react";
 import { AuthState, User, Role } from "@types/api";
-import { authService } from "./auth";
+import { authService } from "@services/auth"; // ← was "./auth", now "@services/auth"
 
 interface AuthContextType extends AuthState {
   login: (username: string, password: string) => Promise<void>;
@@ -29,7 +29,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     error: null,
   });
 
-  // Initialize auth state from stored tokens on mount
   useEffect(() => {
     const initAuth = async () => {
       const tokens = authService.getStoredTokens();
@@ -45,7 +44,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
             isLoading: false,
           }));
         } catch (error) {
-          // Token is invalid, clear storage
           authService.clearTokens();
           setState((prev) => ({
             ...prev,

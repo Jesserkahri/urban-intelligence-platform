@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
+      "@": path.resolve(__dirname, "src"),
       "@context": path.resolve(__dirname, "src/context"),
       "@components": path.resolve(__dirname, "src/components"),
       "@layouts": path.resolve(__dirname, "src/layouts"),
@@ -14,7 +15,18 @@ export default defineConfig({
       "@hooks": path.resolve(__dirname, "src/hooks"),
       "@utils": path.resolve(__dirname, "src/utils"),
       "@services": path.resolve(__dirname, "src/services"),
-      "@types": path.resolve(__dirname, "src/types"),
+      "@appTypes": path.resolve(__dirname, "src/types"),
+      "@lib": path.resolve(__dirname, "src/lib"), // ← missing
+      "@app": path.resolve(__dirname, "src/app"), // ← missing
+    },
+  },
+  server: {
+    port: 5173,
+    proxy: {
+      "/api": {
+        target: "http://localhost:8080",
+        changeOrigin: true,
+      },
     },
   },
 });
