@@ -78,9 +78,10 @@ public class AuthenticationService {
      */
     @Transactional(noRollbackFor = BadCredentialsException.class)
     public TokenResponse login(LoginRequest request, String deviceInfo) {
-        log.info("LOGIN attempt for: {}", request.getLogin());
+            log.info("LOGIN attempt for: {}", request.getLogin());
 
-        User user = userRepository.findByUsernameOrEmail(request.getLogin(), request.getLogin())
+        String identifier = request.getLogin().toLowerCase().trim();
+        User user = userRepository.findByUsernameOrEmail(identifier, identifier)
             .orElseThrow(() -> {
                 log.warn("LOGIN failed: user '{}' not found", request.getLogin());
                 return new BadCredentialsException("Invalid username/email or password");

@@ -102,7 +102,8 @@ export const LoginPage: React.FC = () => {
                 <p className="text-xs text-slate-400 mb-3">Demo Credentials:</p>
                 <div className="space-y-1 text-xs text-slate-500">
                   <p>Admin: admin / admin123</p>
-                  <p>Manager: manager / manager123</p>
+                  <p>Operator: operator / operator123</p>
+                  <p>Analyst: analyst / analyst123</p>
                   <p>Viewer: viewer / viewer123</p>
                 </div>
               </div>

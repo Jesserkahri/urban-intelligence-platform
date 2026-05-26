@@ -33,7 +33,7 @@ export interface User {
   updatedAt: string;
 }
 
-export type Role = "ADMIN" | "MANAGER" | "VIEWER";
+export type Role = "ADMIN" | "OPERATOR" | "ANALYST" | "VIEWER";
 
 export interface AuthState {
   user: User | null;

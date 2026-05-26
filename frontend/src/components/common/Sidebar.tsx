@@ -21,31 +21,31 @@ const navItems = [
     href: "/dashboard",
     label: "Dashboard",
     icon: LayoutDashboard,
-    roles: ["ADMIN", "MANAGER", "VIEWER"],
+    roles: ["ADMIN", "OPERATOR", "ANALYST", "VIEWER"],
   },
   {
     href: "/incidents",
     label: "Incidents",
     icon: AlertTriangle,
-    roles: ["ADMIN", "MANAGER", "VIEWER"],
+    roles: ["ADMIN", "OPERATOR"],
   },
   {
     href: "/analytics",
     label: "Analytics",
     icon: BarChart3,
-    roles: ["ADMIN", "MANAGER", "VIEWER"],
+    roles: ["ADMIN", "OPERATOR", "ANALYST"],
   },
   {
     href: "/recommendations",
     label: "Recommendations",
     icon: Lightbulb,
-    roles: ["ADMIN", "MANAGER"],
+    roles: ["ADMIN", "OPERATOR", "ANALYST"],
   },
   {
     href: "/districts",
     label: "Districts",
     icon: MapPin,
-    roles: ["ADMIN", "MANAGER"],
+    roles: ["ADMIN", "OPERATOR"],
   },
 ];
 

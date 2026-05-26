@@ -49,7 +49,7 @@ export const AppRoutes = () => {
       <Route
         path="/recommendations"
         element={
-          <ProtectedRoute requiredRole={["ADMIN", "MANAGER"]}>
+          <ProtectedRoute requiredRole={["ADMIN", "OPERATOR", "ANALYST"]}>
             <MainLayout>
               <RecommendationsPage />
             </MainLayout>
@@ -59,7 +59,7 @@ export const AppRoutes = () => {
       <Route
         path="/districts"
         element={
-          <ProtectedRoute requiredRole={["ADMIN", "MANAGER"]}>
+          <ProtectedRoute requiredRole={["ADMIN", "OPERATOR"]}>
             <MainLayout>
               <DistrictsPage />
             </MainLayout>
