@@ -8,7 +8,7 @@ export interface ApiResponse<T = unknown> {
 
 // Auth types
 export interface LoginRequest {
-  username: string;
+  login: string;
   password: string;
 }
 

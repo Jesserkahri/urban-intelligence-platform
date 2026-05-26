@@ -107,7 +107,7 @@ class ApiClient {
       JSON.stringify({
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
-        expiresAt: Date.now() + tokens.expiresIn * 1000,
+        expiresAt: Date.now() + tokens.expiresIn,
       }),
     );
   }

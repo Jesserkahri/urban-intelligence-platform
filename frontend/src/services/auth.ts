@@ -4,34 +4,31 @@ export class AuthService {
   async login(
     credentials: LoginRequest,
   ): Promise<{ user: User; tokens: TokenResponse }> {
-    const response = await apiClient.post<
-      ApiResponse<{ accessToken: string; refreshToken: string; user: User }>
-    >("/auth/login", credentials);
+    const response = await apiClient.post<ApiResponse<TokenResponse>>(
+      "/auth/login",
+      credentials,
+    );
 
     if (!response.data.success || !response.data.data) {
       throw new Error(response.data.message || "Login failed");
     }
 
-    const { accessToken, refreshToken, user } = response.data.data;
-    apiClient.setTokens({
-      accessToken,
-      refreshToken,
-      expiresIn: 900, // 15 minutes
-    });
+    const tokens = response.data.data;
+    apiClient.setTokens(tokens);
 
+    const user = await this.getCurrentUser();
     return {
       user,
-      tokens: {
-        accessToken,
-        refreshToken,
-        expiresIn: 900,
-      },
+      tokens,
     };
   }
 
   async logout(): Promise<void> {
     try {
-      await apiClient.post("/auth/logout");
+      const tokens = apiClient.getTokens();
+      await apiClient.post("/auth/logout", {
+        refreshToken: tokens?.refreshToken,
+      });
     } catch (error) {
       console.warn("Logout request failed, clearing tokens anyway", error);
     }

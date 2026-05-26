@@ -65,11 +65,11 @@ export const LoginPage: React.FC = () => {
               {/* Username */}
               <div className="space-y-2">
                 <label className="text-sm font-medium text-slate-200">
-                  Username
+                  Username or email
                 </label>
                 <Input
                   type="text"
-                  placeholder="Enter your username"
+                  placeholder="Enter your username or email"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   disabled={isLoading}

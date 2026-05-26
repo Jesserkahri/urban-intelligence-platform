@@ -1,5 +1,6 @@
 package com.urban.intelligence.platform.auth.repository;
 
+import com.urban.intelligence.platform.auth.domain.Role;
 import com.urban.intelligence.platform.auth.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -21,6 +22,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByUsername(String username);
 
     boolean existsByEmail(String email);
+
+    boolean existsByRole(Role role);
 
     Optional<User> findByEmailVerificationToken(String token);
 

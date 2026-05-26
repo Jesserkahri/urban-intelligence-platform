@@ -64,7 +64,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const login = async (username: string, password: string) => {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
     try {
-      const { user, tokens } = await authService.login({ username, password });
+      const { user, tokens } = await authService.login({
+        login: username,
+        password,
+      });
       setState({
         user,
         accessToken: tokens.accessToken,
