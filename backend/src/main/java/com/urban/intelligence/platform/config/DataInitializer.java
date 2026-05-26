@@ -57,6 +57,53 @@ public class DataInitializer implements CommandLineRunner {
         userRepository.save(admin);
 
         log.info("INIT: created admin user '{}' (email={}, role=ADMIN)", admin.getUsername(), admin.getEmail());
-        log.info("INIT: admin credentials can be overridden via ADMIN_USERNAME / ADMIN_EMAIL / ADMIN_PASSWORD env vars");
+
+        // Seed manager test account
+        String managerUsername = environment.getProperty("MANAGER_USERNAME", "manager");
+        String managerEmail = environment.getProperty("MANAGER_EMAIL", "manager@urbanplatform.com");
+        String managerPassword = environment.getProperty("MANAGER_PASSWORD", "manager123");
+
+        if (!userRepository.existsByUsername(managerUsername)) {
+            User manager = User.builder()
+                .username(managerUsername.toLowerCase().trim())
+                .email(managerEmail.toLowerCase().trim())
+                .password(passwordEncoder.encode(managerPassword))
+                .displayName("Platform Manager")
+                .role(Role.MANAGER)
+                .enabled(true)
+                .accountNonExpired(true)
+                .accountNonLocked(true)
+                .credentialsNonExpired(true)
+                .emailVerified(true)
+                .failedLoginAttempts(0)
+                .build();
+            userRepository.save(manager);
+            log.info("INIT: created manager user '{}' (email={}, role=MANAGER)", manager.getUsername(), manager.getEmail());
+        }
+
+        // Seed viewer test account
+        String viewerUsername = environment.getProperty("VIEWER_USERNAME", "viewer");
+        String viewerEmail = environment.getProperty("VIEWER_EMAIL", "viewer@urbanplatform.com");
+        String viewerPassword = environment.getProperty("VIEWER_PASSWORD", "viewer123");
+
+        if (!userRepository.existsByUsername(viewerUsername)) {
+            User viewer = User.builder()
+                .username(viewerUsername.toLowerCase().trim())
+                .email(viewerEmail.toLowerCase().trim())
+                .password(passwordEncoder.encode(viewerPassword))
+                .displayName("Platform Viewer")
+                .role(Role.VIEWER)
+                .enabled(true)
+                .accountNonExpired(true)
+                .accountNonLocked(true)
+                .credentialsNonExpired(true)
+                .emailVerified(true)
+                .failedLoginAttempts(0)
+                .build();
+            userRepository.save(viewer);
+            log.info("INIT: created viewer user '{}' (email={}, role=VIEWER)", viewer.getUsername(), viewer.getEmail());
+        }
+
+        log.info("INIT: credentials can be overridden via *_USERNAME / *_EMAIL / *_PASSWORD env vars");
     }
 }
