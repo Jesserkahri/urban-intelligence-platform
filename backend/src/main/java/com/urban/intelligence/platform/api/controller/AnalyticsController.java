@@ -15,6 +15,7 @@ import com.urban.intelligence.platform.dto.analytics.DistrictRiskAnalysisRespons
 import com.urban.intelligence.platform.dto.analytics.DistrictRiskRankingResponse;
 import com.urban.intelligence.platform.dto.analytics.HotspotRankingResponse;
 import com.urban.intelligence.platform.dto.analytics.HotspotResponse;
+import com.urban.intelligence.platform.dto.analytics.DashboardInsightResponse;
 import com.urban.intelligence.platform.dto.analytics.OperationalInsightResponse;
 import com.urban.intelligence.platform.dto.analytics.WeeklyTrendResponse;
 import com.urban.intelligence.platform.service.AnalyticsEventService;
@@ -172,5 +173,10 @@ public class AnalyticsController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(insightService.generateAllRecommendations(PageRequest.of(page, Math.min(size, 50))));
+    }
+
+    @GetMapping("/insights/dashboard")
+    public ResponseEntity<DashboardInsightResponse> getDashboardInsights() {
+        return ResponseEntity.ok(insightService.generateDashboardInsights());
     }
 }

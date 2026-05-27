@@ -204,6 +204,40 @@ export interface OperationalInsightResponse {
   generatedAt: string;
 }
 
+export interface DashboardInsightResponse {
+  health: {
+    totalIncidents24h: number;
+    criticalIncidents: number;
+    highSeverityIncidents: number;
+    systemStatus: string;
+  };
+  alerts: Array<{
+    type: string;
+    message: string;
+    priority: string;
+    count: number;
+    category: string;
+  }>;
+  recommendations: Array<{
+    title: string;
+    rationale: string;
+    priority: string;
+  }>;
+  trendSummary: {
+    trendDirection: string;
+    growthPercentage: number;
+    summary: string;
+    topIncidentTypes: string[];
+    topCategories: string[];
+  };
+  intelligenceCards: Array<{
+    title: string;
+    detail: string;
+    severity: string;
+  }>;
+  generatedAt: string;
+}
+
 // Recommendation types
 export type RecommendationPriority = "LOW" | "MEDIUM" | "HIGH";
 export type RecommendationStatus = "PENDING" | "IMPLEMENTED" | "REJECTED";

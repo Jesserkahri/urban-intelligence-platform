@@ -1,6 +1,7 @@
 import { apiClient } from "@services/api";
 import {
   CategoryTrendResponse,
+  DashboardInsightResponse,
   DailyTrendResponse,
   DistrictRiskRankingResponse,
   HotspotResponse,
@@ -43,6 +44,13 @@ export async function fetchDistrictRiskRanking(): Promise<
 > {
   const response = await apiClient.get<DistrictRiskRankingResponse[]>(
     "/api/analytics/districts/risk-ranking",
+  );
+  return response.data;
+}
+
+export async function fetchDashboardInsights(): Promise<DashboardInsightResponse> {
+  const response = await apiClient.get<DashboardInsightResponse>(
+    "/api/analytics/insights/dashboard",
   );
   return response.data;
 }

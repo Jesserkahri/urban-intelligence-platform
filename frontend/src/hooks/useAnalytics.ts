@@ -2,11 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 import {
   fetchCategoryTrends,
   fetchDailyTrends,
+  fetchDashboardInsights,
   fetchDistrictRiskRanking,
   fetchHotspotRankings,
 } from "@services/analytics";
 import {
   CategoryTrendResponse,
+  DashboardInsightResponse,
   DailyTrendResponse,
   DistrictRiskRankingResponse,
   HotspotResponse,
@@ -39,6 +41,14 @@ export const useDistrictRiskRanking = () =>
   useQuery<DistrictRiskRankingResponse[], Error>({
     queryKey: ["analytics", "risk-ranking"],
     queryFn: fetchDistrictRiskRanking,
+    staleTime: 1000 * 60 * 2,
+    retry: 2,
+  });
+
+export const useDashboardInsights = () =>
+  useQuery<DashboardInsightResponse, Error>({
+    queryKey: ["analytics", "dashboard"],
+    queryFn: fetchDashboardInsights,
     staleTime: 1000 * 60 * 2,
     retry: 2,
   });

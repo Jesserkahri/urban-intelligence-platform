@@ -4,6 +4,7 @@ import { KPICard } from "@components/common/KPICard";
 import { AnalyticsChart } from "@components/common/AnalyticsChart";
 import { RecentIncidents } from "@components/common/RecentIncidents";
 import {
+  useDashboardInsights,
   useDailyTrends,
   useDistrictRiskRanking,
   useHotspotRankings,
@@ -25,6 +26,8 @@ export const DashboardPage: React.FC = () => {
   });
   const { data: recentIncidents, isLoading: isRecentLoading } =
     useRecentIncidents();
+  const { data: dashboardInsights, isLoading: isDashboardLoading } =
+    useDashboardInsights();
 
   const averageRiskScore =
     riskRanking && riskRanking.length
@@ -80,6 +83,71 @@ export const DashboardPage: React.FC = () => {
           value={districts?.totalElements ?? "—"}
           icon={<MapPin className="h-4 w-4" />}
         />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <KPICard
+          label="24h Incidents"
+          value={dashboardInsights?.health?.totalIncidents24h ?? "—"}
+          change={dashboardInsights?.trendSummary?.growthPercentage}
+          trend={
+            (dashboardInsights?.trendSummary?.growthPercentage ?? 0) >= 0
+              ? "up"
+              : "down"
+          }
+          icon={<AlertTriangle className="h-4 w-4" />}
+        />
+        <KPICard
+          label="Active Alerts"
+          value={dashboardInsights?.alerts?.length ?? "—"}
+          unit="items"
+          icon={<Zap className="h-4 w-4" />}
+        />
+        <KPICard
+          label="Trend Signal"
+          value={dashboardInsights?.trendSummary?.trendDirection ?? "—"}
+          icon={<TrendingUp className="h-4 w-4" />}
+        />
+      </div>
+
+      <div className="rounded-lg border border-border bg-card p-6">
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">
+              Operational intelligence
+            </p>
+            <h2 className="text-xl font-semibold">Insight summary</h2>
+          </div>
+        </div>
+        {isDashboardLoading ? (
+          <div className="space-y-3">
+            {[...Array(3)].map((_, index) => (
+              <div
+                key={index}
+                className="h-12 rounded-md bg-muted animate-pulse"
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {dashboardInsights?.intelligenceCards?.map((card) => (
+              <div
+                key={card.title}
+                className="rounded-lg border border-border p-4"
+              >
+                <p className="text-sm font-medium text-foreground">
+                  {card.title}
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  {card.detail}
+                </p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Severity: {card.severity}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-6">
@@ -185,10 +253,47 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      <RecentIncidents
-        incidents={recentIncidents ?? []}
-        isLoading={isRecentLoading}
-      />
+      <div className="grid grid-cols-1 xl:grid-cols-[1.5fr_1fr] gap-6">
+        <div className="rounded-lg border border-border bg-card p-6">
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">
+                Recommendations
+              </p>
+              <h2 className="text-xl font-semibold">Priority actions</h2>
+            </div>
+          </div>
+          {isDashboardLoading ? (
+            <div className="space-y-3">
+              {[...Array(3)].map((_, index) => (
+                <div
+                  key={index}
+                  className="h-12 rounded-md bg-muted animate-pulse"
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {dashboardInsights?.recommendations?.map((recommendation) => (
+                <div
+                  key={recommendation.title}
+                  className="rounded-lg border border-border p-4"
+                >
+                  <p className="font-semibold">{recommendation.title}</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    {recommendation.rationale}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <RecentIncidents
+          incidents={recentIncidents ?? []}
+          isLoading={isRecentLoading}
+        />
+      </div>
     </div>
   );
 };
