@@ -1,19 +1,32 @@
 import axios, {
   AxiosError,
   AxiosInstance,
+  AxiosResponse,
   InternalAxiosRequestConfig,
 } from "axios";
-import { TokenResponse, ApiError } from "@appTypes/api"; // ← fixed
+import { TokenResponse } from "@appTypes/api";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
 const TOKENS_STORAGE_KEY = "auth_tokens";
 
-// ← moved up: was defined after the class that uses it
 export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   message?: string;
   timestamp?: string;
+}
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export function unwrapApiResponse<T>(
+  response: AxiosResponse<ApiResponse<T>>,
+): T {
+  if (!response.data.success) {
+    throw new Error(response.data.message || "API request failed");
+  }
+  return response.data.data as T;
 }
 
 class ApiClient {
@@ -23,7 +36,7 @@ class ApiClient {
   constructor() {
     this.client = axios.create({
       baseURL: API_BASE_URL,
-      timeout: 10000,
+      timeout: 15000,
       headers: { "Content-Type": "application/json" },
     });
     this.setupInterceptors();
@@ -46,6 +59,7 @@ class ApiClient {
       async (error: AxiosError) => {
         const originalRequest = error.config as InternalAxiosRequestConfig & {
           _retry?: boolean;
+          _retryCount?: number;
         };
 
         if (error.response?.status === 401 && !originalRequest._retry) {
@@ -78,6 +92,17 @@ class ApiClient {
             return Promise.reject(refreshError);
           }
         }
+
+        if (
+          (!error.response || error.response.status >= 500) &&
+          originalRequest &&
+          (originalRequest._retryCount ?? 0) < 2
+        ) {
+          originalRequest._retryCount = (originalRequest._retryCount ?? 0) + 1;
+          await delay(200 * Math.pow(2, originalRequest._retryCount));
+          return this.client(originalRequest);
+        }
+
         return Promise.reject(error);
       },
     );
@@ -150,4 +175,3 @@ class ApiClient {
 }
 
 export const apiClient = new ApiClient();
-export type { ApiError };

@@ -6,6 +6,16 @@ export interface ApiResponse<T = unknown> {
   timestamp?: string;
 }
 
+export interface PageableResponse<T> {
+  content: T[];
+  number: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+}
+
 // Auth types
 export interface LoginRequest {
   login: string;
@@ -63,35 +73,161 @@ export interface DistrictResponse {
   operationalRiskScore: number;
 }
 
+export interface DistrictMetricsResponse {
+  districtId: number;
+  districtName: string;
+  averageRiskScore: number;
+  incidentCount: number;
+  unresolvedIncidents: number;
+  sustainabilityScore: number;
+}
+
 // Incident types
+export type IncidentSeverity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+export type IncidentStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
+
 export interface Incident {
   id: number;
-  districtId: number;
-  title: string;
+  type: string;
+  title?: string;
   description: string;
-  severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
-  status: "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
+  latitude: number;
+  longitude: number;
+  districtId: number;
+  districtName?: string;
+  severity: IncidentSeverity;
+  status: IncidentStatus;
   createdAt: string;
   updatedAt: string;
 }
 
+export interface IncidentCreateRequest {
+  type: string;
+  description: string;
+  severity: IncidentSeverity;
+  latitude: number;
+  longitude: number;
+  districtId: number;
+}
+
+export interface IncidentUpdateRequest {
+  type?: string;
+  description?: string;
+  severity?: IncidentSeverity;
+  latitude?: number;
+  longitude?: number;
+  status?: IncidentStatus;
+}
+
 // Analytics types
-export interface AnalyticsData {
-  date: string;
-  incidents: number;
+export interface DailyTrendResponse {
+  startDate: string;
+  endDate: string;
+  totalIncidents: number;
+  averageDaily: number;
+  growthPercentage: number;
+  trendIndicator: string;
+  dailyData: Array<{
+    date: string;
+    incidentCount: number;
+    criticalCount: number;
+    resolvedCount: number;
+  }>;
+}
+
+export interface WeeklyTrendResponse {
+  weeksAnalyzed: number;
+  totalIncidents: number;
+  averageWeekly: number;
+  weeklyData: Array<{
+    week: number;
+    incidentCount: number;
+    categoryBreakdown: Record<string, number>;
+    severityDistribution: Record<string, number>;
+    resolutionRate: number;
+  }>;
+}
+
+export interface CategoryTrendResponse {
+  analysisWindow: number;
+  totalIncidents: number;
+  uniqueCategories: number;
+  topCategory: string;
+  categoryData: Array<{
+    category: string;
+    count: number;
+    percentage: number;
+    averageSeverity: number;
+    resolutionRate: number;
+  }>;
+}
+
+export interface HotspotResponse {
+  districtId: number;
+  districtName: string;
+  hotspotScore: number;
+  incidentCount: number;
+  unresolvedIncidentCount: number;
+  unresolvedRatio: number;
+  averageSeverity: string;
+  riskIntensity: string;
+}
+
+export interface DistrictRiskRankingResponse {
+  districtId: number;
+  districtName: string;
   riskScore: number;
-  sustainabilityScore: number;
+  riskLevel: string;
+  incidentCount: number;
+  unresolvedCount: number;
+  population: number;
+}
+
+export interface OperationalInsightResponse {
+  districtId: number;
+  districtName: string;
+  generatedRecommendationCount: number;
+  criticalRecommendations: number;
+  highPriorityRecommendations: number;
+  recommendations: Array<{
+    id: number;
+    type: string;
+    priority: string;
+    message: string;
+    districtId: number;
+    districtName: string;
+    createdAt: string;
+    updatedAt: string;
+  }>;
+  generatedAt: string;
 }
 
 // Recommendation types
+export type RecommendationPriority = "LOW" | "MEDIUM" | "HIGH";
+export type RecommendationStatus = "PENDING" | "IMPLEMENTED" | "REJECTED";
+
 export interface Recommendation {
   id: number;
+  type: string;
+  priority: RecommendationPriority;
+  message: string;
   districtId: number;
-  title: string;
-  description: string;
-  priority: "LOW" | "MEDIUM" | "HIGH";
-  status: "PENDING" | "IMPLEMENTED" | "REJECTED";
+  districtName?: string;
   createdAt: string;
+  updatedAt?: string;
+}
+
+export interface RecommendationCreateRequest {
+  type: string;
+  priority: RecommendationPriority;
+  message: string;
+  districtId: number;
+}
+
+export interface RecommendationUpdateRequest {
+  type?: string;
+  priority?: RecommendationPriority;
+  message?: string;
 }
 
 // KPI types

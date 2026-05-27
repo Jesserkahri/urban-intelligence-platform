@@ -1,110 +1,185 @@
 import React from "react";
+import { AlertTriangle, TrendingUp, Zap, MapPin } from "lucide-react";
 import { KPICard } from "@components/common/KPICard";
 import { AnalyticsChart } from "@components/common/AnalyticsChart";
 import { RecentIncidents } from "@components/common/RecentIncidents";
-import { AlertTriangle, TrendingUp, Zap, MapPin } from "lucide-react";
-
-// Mock data
-const mockKPIs = [
-  {
-    label: "Active Incidents",
-    value: 24,
-    change: 12,
-    trend: "up" as const,
-    icon: <AlertTriangle className="h-4 w-4" />,
-  },
-  {
-    label: "Avg Risk Score",
-    value: "65.4",
-    unit: "%",
-    change: -5,
-    trend: "down" as const,
-    icon: <TrendingUp className="h-4 w-4" />,
-  },
-  {
-    label: "Resolved Today",
-    value: 12,
-    change: 8,
-    trend: "up" as const,
-    icon: <Zap className="h-4 w-4" />,
-  },
-  {
-    label: "Districts Monitored",
-    value: 42,
-    icon: <MapPin className="h-4 w-4" />,
-  },
-];
-
-const mockChartData = [
-  { name: "Jan", incidents: 45, riskScore: 62 },
-  { name: "Feb", incidents: 52, riskScore: 65 },
-  { name: "Mar", incidents: 48, riskScore: 61 },
-  { name: "Apr", incidents: 61, riskScore: 68 },
-  { name: "May", incidents: 55, riskScore: 64 },
-  { name: "Jun", incidents: 42, riskScore: 59 },
-];
-
-const mockIncidents = [
-  {
-    id: 1,
-    title: "Traffic congestion detected",
-    districtName: "Downtown",
-    severity: "HIGH" as const,
-    status: "OPEN",
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 2,
-    title: "Air quality threshold exceeded",
-    districtName: "North District",
-    severity: "CRITICAL" as const,
-    status: "IN_PROGRESS",
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-  },
-  {
-    id: 3,
-    title: "Parking occupancy high",
-    districtName: "Central",
-    severity: "MEDIUM" as const,
-    status: "OPEN",
-    createdAt: new Date(Date.now() - 172800000).toISOString(),
-  },
-];
+import {
+  useDailyTrends,
+  useDistrictRiskRanking,
+  useHotspotRankings,
+} from "@hooks/useAnalytics";
+import { useDistricts } from "@hooks/useDistricts";
+import { useRecentIncidents } from "@hooks/useIncidents";
+import { formatDate } from "@lib/utils";
 
 export const DashboardPage: React.FC = () => {
+  const { data: dailyTrend, isLoading: isDailyLoading } = useDailyTrends();
+  const { data: riskRanking, isLoading: isRiskLoading } =
+    useDistrictRiskRanking();
+  const { data: hotspots, isLoading: isHotspotLoading } = useHotspotRankings(4);
+  const { data: districts } = useDistricts({
+    page: 0,
+    size: 20,
+    sort: "name,asc",
+  });
+  const { data: recentIncidents, isLoading: isRecentLoading } =
+    useRecentIncidents();
+
+  const averageRiskScore =
+    riskRanking && riskRanking.length
+      ? (
+          riskRanking.reduce((sum, item) => sum + item.riskScore, 0) /
+          riskRanking.length
+        ).toFixed(1)
+      : "0.0";
+
+  const resolvedToday = dailyTrend?.dailyData?.at(-1)?.resolvedCount ?? 0;
+
+  const analyticsData =
+    dailyTrend?.dailyData?.map((daily) => ({
+      name: formatDate(daily.date),
+      incidents: daily.incidentCount,
+      resolved: daily.resolvedCount,
+    })) ?? [];
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
         <p className="text-muted-foreground mt-2">
-          Urban intelligence and operational metrics
+          Urban intelligence and operational metrics.
         </p>
       </div>
 
-      {/* KPI Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {mockKPIs.map((kpi) => (
-          <KPICard key={kpi.label} {...kpi} />
-        ))}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <KPICard
+          label="Active Incidents"
+          value={recentIncidents?.length ?? "—"}
+          change={dailyTrend ? dailyTrend.growthPercentage : undefined}
+          trend={dailyTrend?.growthPercentage >= 0 ? "up" : "down"}
+          icon={<AlertTriangle className="h-4 w-4" />}
+        />
+        <KPICard
+          label="Avg Risk Score"
+          value={averageRiskScore}
+          unit="%"
+          icon={<TrendingUp className="h-4 w-4" />}
+        />
+        <KPICard
+          label="Resolved Today"
+          value={resolvedToday}
+          change={dailyTrend?.growthPercentage}
+          trend={dailyTrend?.growthPercentage >= 0 ? "up" : "down"}
+          icon={<Zap className="h-4 w-4" />}
+        />
+        <KPICard
+          label="Districts Monitored"
+          value={districts?.totalElements ?? "—"}
+          icon={<MapPin className="h-4 w-4" />}
+        />
       </div>
 
-      {/* Charts and Incidents */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <AnalyticsChart
-            title="Incidents & Risk Trends"
-            data={mockChartData}
-            lines={[
-              { key: "incidents", name: "Incidents", color: "#ef4444" },
-              { key: "riskScore", name: "Risk Score", color: "#f59e0b" },
-            ]}
-            height={300}
-          />
+      <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-6">
+        <AnalyticsChart
+          title="Daily Incident Trends"
+          data={analyticsData}
+          lines={[
+            { key: "incidents", name: "Incidents", color: "#ef4444" },
+            { key: "resolved", name: "Resolved", color: "#10b981" },
+          ]}
+          height={340}
+        />
+
+        <div className="space-y-4">
+          <div className="rounded-lg border border-border bg-card p-6">
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Top hotspots
+                </p>
+                <h2 className="text-xl font-semibold">Critical districts</h2>
+              </div>
+            </div>
+            {isHotspotLoading ? (
+              <div className="space-y-3">
+                {[...Array(4)].map((_, index) => (
+                  <div
+                    key={index}
+                    className="h-12 rounded-md bg-muted animate-pulse"
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {hotspots?.map((hotspot) => (
+                  <div
+                    key={hotspot.districtId}
+                    className="rounded-lg border border-border p-4"
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="font-semibold">{hotspot.districtName}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {hotspot.incidentCount} incidents •{" "}
+                          {hotspot.unresolvedRatio.toFixed(0)}% unresolved
+                        </p>
+                      </div>
+                      <div className="text-right text-sm">
+                        <p className="font-semibold">
+                          {hotspot.hotspotScore.toFixed(1)}
+                        </p>
+                        <p className="text-muted-foreground">
+                          {hotspot.riskIntensity}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-lg border border-border bg-card p-6">
+            <p className="text-sm font-medium text-muted-foreground">
+              Risk ranking
+            </p>
+            <h2 className="text-xl font-semibold">District scores</h2>
+            <div className="mt-4 space-y-3">
+              {(isRiskLoading
+                ? Array.from({ length: 3 })
+                : (riskRanking ?? [])
+              ).map((district, index) => (
+                <div
+                  key={district?.districtId ?? index}
+                  className="flex items-center justify-between rounded-lg border border-border p-3"
+                >
+                  <div>
+                    <p className="font-medium">
+                      {district?.districtName ?? "Loading"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {district?.incidentCount ?? 0} incidents
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold">
+                      {district?.riskScore?.toFixed(1) ?? "—"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {district?.riskLevel ?? "—"}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-
-        <RecentIncidents incidents={mockIncidents} />
       </div>
+
+      <RecentIncidents
+        incidents={recentIncidents ?? []}
+        isLoading={isRecentLoading}
+      />
     </div>
   );
 };
