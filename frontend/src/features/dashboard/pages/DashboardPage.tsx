@@ -56,7 +56,7 @@ export const DashboardPage: React.FC = () => {
           label="Active Incidents"
           value={recentIncidents?.length ?? "—"}
           change={dailyTrend ? dailyTrend.growthPercentage : undefined}
-          trend={dailyTrend?.growthPercentage >= 0 ? "up" : "down"}
+          trend={(dailyTrend?.growthPercentage ?? 0) >= 0 ? "up" : "down"}
           icon={<AlertTriangle className="h-4 w-4" />}
         />
         <KPICard
@@ -69,7 +69,7 @@ export const DashboardPage: React.FC = () => {
           label="Resolved Today"
           value={resolvedToday}
           change={dailyTrend?.growthPercentage}
-          trend={dailyTrend?.growthPercentage >= 0 ? "up" : "down"}
+          trend={(dailyTrend?.growthPercentage ?? 0) >= 0 ? "up" : "down"}
           icon={<Zap className="h-4 w-4" />}
         />
         <KPICard

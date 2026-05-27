@@ -4,19 +4,19 @@ import {
   deleteIncident,
   fetchIncidents,
   fetchRecentIncidents,
+  IncidentQueryParams,
   updateIncident,
 } from "@services/incident";
 import {
   Incident,
   IncidentCreateRequest,
-  IncidentQueryParams,
   IncidentUpdateRequest,
   PageableResponse,
 } from "@appTypes/api";
 
 export const useIncidents = (params: IncidentQueryParams) => {
-  return useQuery<PageableResponse<Incident>, Error>(
-    [
+  return useQuery<PageableResponse<Incident>, Error>({
+    queryKey: [
       "incidents",
       params.page ?? 0,
       params.size ?? 20,
@@ -25,17 +25,17 @@ export const useIncidents = (params: IncidentQueryParams) => {
       params.districtId ?? null,
       params.search ?? null,
     ],
-    () => fetchIncidents(params),
-    {
-      keepPreviousData: true,
-      retry: 2,
-      staleTime: 1000 * 60 * 3,
-    },
-  );
+    queryFn: () => fetchIncidents(params),
+    placeholderData: (prev) => prev,
+    retry: 2,
+    staleTime: 1000 * 60 * 3,
+  });
 };
 
 export const useRecentIncidents = () =>
-  useQuery<Incident[], Error>(["incidents", "recent"], fetchRecentIncidents, {
+  useQuery<Incident[], Error>({
+    queryKey: ["incidents", "recent"],
+    queryFn: fetchRecentIncidents,
     staleTime: 1000 * 60 * 2,
     retry: 2,
   });
@@ -43,15 +43,13 @@ export const useRecentIncidents = () =>
 export const useCreateIncident = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<Incident, Error, IncidentCreateRequest>(
-    (payload: IncidentCreateRequest) => createIncident(payload),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(["incidents"]);
-        queryClient.invalidateQueries(["incidents", "recent"]);
-      },
+  return useMutation<Incident, Error, IncidentCreateRequest>({
+    mutationFn: (payload: IncidentCreateRequest) => createIncident(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["incidents"] });
+      queryClient.invalidateQueries({ queryKey: ["incidents", "recent"] });
     },
-  );
+  });
 };
 
 export const useUpdateIncident = () => {
@@ -61,52 +59,50 @@ export const useUpdateIncident = () => {
     Incident,
     Error,
     { id: number; payload: IncidentUpdateRequest }
-  >(
-    ({ id, payload }: { id: number; payload: IncidentUpdateRequest }) =>
-      updateIncident(id, payload),
-    {
-      onMutate: async ({ id, payload }) => {
-        await queryClient.cancelQueries(["incidents"]);
+  >({
+    mutationFn: ({ id, payload }) => updateIncident(id, payload),
+    onMutate: async ({ id, payload }) => {
+      await queryClient.cancelQueries({ queryKey: ["incidents"] });
 
-        const previous = queryClient.getQueriesData(["incidents"]);
+      const previous = queryClient.getQueriesData({ queryKey: ["incidents"] });
 
-        queryClient.setQueriesData(["incidents"], (old: any) => {
-          if (!old || !old.content) return old;
-          return {
-            ...old,
-            content: old.content.map((incident: Incident) =>
-              incident.id === id ? { ...incident, ...payload } : incident,
-            ),
-          };
-        });
+      queryClient.setQueriesData({ queryKey: ["incidents"] }, (old: any) => {
+        if (!old || !old.content) return old;
+        return {
+          ...old,
+          content: old.content.map((incident: Incident) =>
+            incident.id === id ? { ...incident, ...payload } : incident,
+          ),
+        };
+      });
 
-        return { previous };
-      },
-      onError: (_, __, context: any) => {
-        if (context?.previous) {
-          context.previous.forEach(([queryKey, data]: any) => {
-            queryClient.setQueryData(queryKey, data);
-          });
-        }
-      },
-      onSettled: () => {
-        queryClient.invalidateQueries(["incidents"]);
-        queryClient.invalidateQueries(["incidents", "recent"]);
-      },
+      return { previous };
     },
-  );
+    onError: (_, __, context: any) => {
+      if (context?.previous) {
+        context.previous.forEach(([queryKey, data]: any) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["incidents"] });
+      queryClient.invalidateQueries({ queryKey: ["incidents", "recent"] });
+    },
+  });
 };
 
 export const useDeleteIncident = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<void, Error, number>((id: number) => deleteIncident(id), {
+  return useMutation<void, Error, number>({
+    mutationFn: (id: number) => deleteIncident(id),
     onMutate: async (id: number) => {
-      await queryClient.cancelQueries(["incidents"]);
+      await queryClient.cancelQueries({ queryKey: ["incidents"] });
 
-      const previous = queryClient.getQueriesData(["incidents"]);
+      const previous = queryClient.getQueriesData({ queryKey: ["incidents"] });
 
-      queryClient.setQueriesData(["incidents"], (old: any) => {
+      queryClient.setQueriesData({ queryKey: ["incidents"] }, (old: any) => {
         if (!old || !old.content) return old;
         return {
           ...old,
@@ -127,8 +123,8 @@ export const useDeleteIncident = () => {
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries(["incidents"]);
-      queryClient.invalidateQueries(["incidents", "recent"]);
+      queryClient.invalidateQueries({ queryKey: ["incidents"] });
+      queryClient.invalidateQueries({ queryKey: ["incidents", "recent"] });
     },
   });
 };
