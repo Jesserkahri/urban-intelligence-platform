@@ -246,7 +246,7 @@ export const IncidentsPage: React.FC = () => {
         size="sm"
         variant="destructive"
         onClick={() => handleDelete(incident.id)}
-        disabled={deleteMutation.isLoading}
+        disabled={deleteMutation.isPending}
       >
         Delete
       </Button>
@@ -414,7 +414,7 @@ export const IncidentsPage: React.FC = () => {
                 <Button
                   type="submit"
                   disabled={
-                    createMutation.isLoading || updateMutation.isLoading
+                    createMutation.isPending || updateMutation.isPending
                   }
                 >
                   {selectedIncidentId ? "Save changes" : "Create incident"}

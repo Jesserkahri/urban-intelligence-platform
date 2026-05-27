@@ -11,6 +11,7 @@ import {
 import { useDistricts } from "@hooks/useDistricts";
 import { useRecentIncidents } from "@hooks/useIncidents";
 import { formatDate } from "@lib/utils";
+import { DistrictRiskRankingResponse } from "@appTypes/api";
 
 export const DashboardPage: React.FC = () => {
   const { data: dailyTrend, isLoading: isDailyLoading } = useDailyTrends();
@@ -33,7 +34,9 @@ export const DashboardPage: React.FC = () => {
         ).toFixed(1)
       : "0.0";
 
-  const resolvedToday = dailyTrend?.dailyData?.at(-1)?.resolvedCount ?? 0;
+  const resolvedToday = dailyTrend?.dailyData?.length
+    ? dailyTrend.dailyData[dailyTrend.dailyData.length - 1].resolvedCount
+    : 0;
 
   const analyticsData =
     dailyTrend?.dailyData?.map((daily) => ({
@@ -146,8 +149,11 @@ export const DashboardPage: React.FC = () => {
             <h2 className="text-xl font-semibold">District scores</h2>
             <div className="mt-4 space-y-3">
               {(isRiskLoading
-                ? Array.from({ length: 3 })
-                : (riskRanking ?? [])
+                ? (Array.from({
+                    length: 3,
+                  }) as Partial<DistrictRiskRankingResponse>[])
+                : ((riskRanking as Partial<DistrictRiskRankingResponse>[]) ??
+                  [])
               ).map((district, index) => (
                 <div
                   key={district?.districtId ?? index}
