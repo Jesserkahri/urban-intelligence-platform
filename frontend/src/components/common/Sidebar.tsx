@@ -16,7 +16,12 @@ interface SidebarProps {
   onClose?: () => void;
 }
 
-const navItems = [
+const navItems: Array<{
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  roles: import("@appTypes/api").Role[];
+}> = [
   {
     href: "/dashboard",
     label: "Dashboard",

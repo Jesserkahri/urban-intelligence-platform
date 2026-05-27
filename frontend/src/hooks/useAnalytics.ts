@@ -5,31 +5,40 @@ import {
   fetchDistrictRiskRanking,
   fetchHotspotRankings,
 } from "@services/analytics";
-
+import {
+  CategoryTrendResponse,
+  DailyTrendResponse,
+  DistrictRiskRankingResponse,
+  HotspotResponse,
+} from "@appTypes/api";
 export const useDailyTrends = () =>
-  useQuery(["analytics", "daily"], fetchDailyTrends, {
+  useQuery<DailyTrendResponse, Error>({
+    queryKey: ["analytics", "daily"],
+    queryFn: fetchDailyTrends,
     staleTime: 1000 * 60 * 2,
     retry: 2,
   });
 
 export const useCategoryTrends = () =>
-  useQuery(["analytics", "categories"], fetchCategoryTrends, {
+  useQuery<CategoryTrendResponse, Error>({
+    queryKey: ["analytics", "categories"],
+    queryFn: fetchCategoryTrends,
     staleTime: 1000 * 60 * 2,
     retry: 2,
   });
 
 export const useHotspotRankings = (limit = 5) =>
-  useQuery(
-    ["analytics", "hotspots", limit],
-    () => fetchHotspotRankings(limit),
-    {
-      staleTime: 1000 * 60 * 2,
-      retry: 2,
-    },
-  );
+  useQuery<HotspotResponse[], Error>({
+    queryKey: ["analytics", "hotspots", limit],
+    queryFn: () => fetchHotspotRankings(limit),
+    staleTime: 1000 * 60 * 2,
+    retry: 2,
+  });
 
 export const useDistrictRiskRanking = () =>
-  useQuery(["analytics", "risk-ranking"], fetchDistrictRiskRanking, {
+  useQuery<DistrictRiskRankingResponse[], Error>({
+    queryKey: ["analytics", "risk-ranking"],
+    queryFn: fetchDistrictRiskRanking,
     staleTime: 1000 * 60 * 2,
     retry: 2,
   });

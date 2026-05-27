@@ -11,10 +11,11 @@ import {
   IncidentCreateRequest,
   IncidentQueryParams,
   IncidentUpdateRequest,
+  PageableResponse,
 } from "@appTypes/api";
 
 export const useIncidents = (params: IncidentQueryParams) => {
-  return useQuery(
+  return useQuery<PageableResponse<Incident>, Error>(
     [
       "incidents",
       params.page ?? 0,
@@ -34,7 +35,7 @@ export const useIncidents = (params: IncidentQueryParams) => {
 };
 
 export const useRecentIncidents = () =>
-  useQuery(["incidents", "recent"], fetchRecentIncidents, {
+  useQuery<Incident[], Error>(["incidents", "recent"], fetchRecentIncidents, {
     staleTime: 1000 * 60 * 2,
     retry: 2,
   });
@@ -42,7 +43,7 @@ export const useRecentIncidents = () =>
 export const useCreateIncident = () => {
   const queryClient = useQueryClient();
 
-  return useMutation(
+  return useMutation<Incident, Error, IncidentCreateRequest>(
     (payload: IncidentCreateRequest) => createIncident(payload),
     {
       onSuccess: () => {
@@ -56,7 +57,11 @@ export const useCreateIncident = () => {
 export const useUpdateIncident = () => {
   const queryClient = useQueryClient();
 
-  return useMutation(
+  return useMutation<
+    Incident,
+    Error,
+    { id: number; payload: IncidentUpdateRequest }
+  >(
     ({ id, payload }: { id: number; payload: IncidentUpdateRequest }) =>
       updateIncident(id, payload),
     {
@@ -95,7 +100,7 @@ export const useUpdateIncident = () => {
 export const useDeleteIncident = () => {
   const queryClient = useQueryClient();
 
-  return useMutation((id: number) => deleteIncident(id), {
+  return useMutation<void, Error, number>((id: number) => deleteIncident(id), {
     onMutate: async (id: number) => {
       await queryClient.cancelQueries(["incidents"]);
 

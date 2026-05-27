@@ -80,10 +80,10 @@ export function DataTable<T extends Record<string, unknown>>({
                 className="border-t border-border hover:bg-muted/40"
               >
                 {columns.map((column) => {
-                  const value =
+                  const value: React.ReactNode =
                     typeof column.accessor === "function"
                       ? column.accessor(row)
-                      : row[column.accessor];
+                      : (row[column.accessor] as unknown as React.ReactNode);
 
                   return (
                     <td

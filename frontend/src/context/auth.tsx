@@ -5,7 +5,7 @@ import React, {
   useState,
   ReactNode,
 } from "react";
-import { AuthState, User, Role } from "@types/api";
+import { AuthState, Role } from "@appTypes/api";
 import { authService } from "@services/auth"; // ← was "./auth", now "@services/auth"
 
 interface AuthContextType extends AuthState {

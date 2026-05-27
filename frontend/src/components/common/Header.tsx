@@ -1,5 +1,5 @@
 import React from "react";
-import { LogOut, Menu, X } from "lucide-react";
+import { LogOut, Menu } from "lucide-react";
 import { useAuth } from "@context/auth";
 import { Button } from "@components/ui/Button";
 import { useState } from "react";

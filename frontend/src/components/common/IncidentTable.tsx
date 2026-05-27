@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Incident } from "@types/api";
+import { Incident } from "@appTypes/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/Card";
 import { Badge } from "@components/ui/Badge";
 import { SEVERITY_COLORS, STATUS_COLORS } from "@lib/utils";
