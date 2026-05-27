@@ -165,7 +165,7 @@ public class OperationalInsightService {
     }
 
     private List<DashboardInsightResponse.RecommendationSummary> buildRecommendationSummaries() {
-        List<String> recommendations = generateOperationalRecommendations();
+        List<String> recommendations = generateOperationalRecommendationTexts();
 
         List<DashboardInsightResponse.RecommendationSummary> summary = new ArrayList<>();
         for (String recommendation : recommendations) {
@@ -176,6 +176,62 @@ public class OperationalInsightService {
                 .build());
         }
         return summary;
+    }
+
+    private List<String> generateOperationalRecommendationTexts() {
+        List<String> texts = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime twentyFourHoursAgo = now.minusHours(24);
+        List<Incident> allRecent = incidentRepository.findByCreatedAtAfter(twentyFourHoursAgo);
+
+        if (allRecent.isEmpty()) {
+            texts.add("No recent incidents detected; maintain standard monitoring protocols.");
+            return texts;
+        }
+
+        long criticalCount = allRecent.stream()
+            .filter(i -> i.getSeverity() == Incident.SeverityLevel.CRITICAL).count();
+        long highCount = allRecent.stream()
+            .filter(i -> i.getSeverity() == Incident.SeverityLevel.HIGH).count();
+        long unresolvedCount = allRecent.stream()
+            .filter(i -> isUnresolved(i)).count();
+
+        if (criticalCount > 0) {
+            texts.add("Immediate attention required: " + criticalCount
+                + " critical incidents active. Activate emergency response coordination across all districts.");
+        }
+
+        if (highCount > 5) {
+            texts.add("High-severity incident volume elevated (" + highCount
+                + "). Prioritize resource allocation to the most affected areas.");
+        }
+
+        if (unresolvedCount > 10) {
+            texts.add("Backlog of " + unresolvedCount
+                + " unresolved incidents growing. Review triage and resolution workflows for bottlenecks.");
+        }
+
+        // check for traffic incidents
+        long trafficCount = allRecent.stream()
+            .filter(i -> containsIgnoreCase(i.getType(), "traffic")).count();
+        if (trafficCount > 3) {
+            texts.add("Traffic-related incidents spiking (" + trafficCount
+                + "). Consider deploying additional traffic management units.");
+        }
+
+        // check for infrastructure incidents
+        long infraCount = allRecent.stream()
+            .filter(i -> containsIgnoreCase(i.getType(), "infrastructure")).count();
+        if (infraCount > 3) {
+            texts.add("Infrastructure incidents elevated (" + infraCount
+                + "). Schedule preventive maintenance inspections.");
+        }
+
+        if (texts.isEmpty()) {
+            texts.add("Operational metrics within normal range. Continue regular monitoring.");
+        }
+
+        return texts;
     }
 
     private DashboardInsightResponse.TrendSummary buildTrendSummary(DailyTrendResponse dailyTrend) {
