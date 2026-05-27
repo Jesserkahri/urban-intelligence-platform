@@ -47,6 +47,12 @@ public interface IncidentRepository extends JpaRepository<Incident, Long> {
 
     long countByDistrictAndSeverity(District district, Incident.SeverityLevel severity);
 
+    List<Incident> findByLatitudeBetweenAndLongitudeBetween(
+        Double minLatitude,
+        Double maxLatitude,
+        Double minLongitude,
+        Double maxLongitude);
+
     @Query("SELECT i FROM Incident i WHERE i.district.id = :districtId AND i.status != 'CLOSED' " +
            "ORDER BY i.severity DESC, i.createdAt DESC")
     List<Incident> findActiveIncidentsByDistrict(@Param("districtId") Long districtId);

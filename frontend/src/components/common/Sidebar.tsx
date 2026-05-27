@@ -6,6 +6,7 @@ import {
   BarChart3,
   Lightbulb,
   MapPin,
+  Globe2,
   X,
 } from "lucide-react";
 import { useAuth } from "@context/auth";
@@ -39,6 +40,12 @@ const navItems: Array<{
     label: "Analytics",
     icon: BarChart3,
     roles: ["ADMIN", "OPERATOR", "ANALYST"],
+  },
+  {
+    href: "/spatial",
+    label: "Spatial",
+    icon: Globe2,
+    roles: ["ADMIN", "OPERATOR", "ANALYST", "VIEWER"],
   },
   {
     href: "/recommendations",

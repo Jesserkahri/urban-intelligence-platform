@@ -83,6 +83,20 @@ public class IncidentController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    @GetMapping("/geo")
+    public ResponseEntity<ApiResponse<List<IncidentResponse>>> getGeoIncidents(
+            @RequestParam(required = false) Double minLat,
+            @RequestParam(required = false) Double maxLat,
+            @RequestParam(required = false) Double minLon,
+            @RequestParam(required = false) Double maxLon,
+            @RequestParam(required = false) String severity,
+            @RequestParam(required = false) Long districtId) {
+        log.debug("READ geo incidents");
+        List<IncidentResponse> response = incidentService.getIncidentsByGeoFilter(
+            minLat, maxLat, minLon, maxLon, severity, districtId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
     public ResponseEntity<ApiResponse<IncidentResponse>> updateIncident(

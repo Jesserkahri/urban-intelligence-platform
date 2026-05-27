@@ -5,6 +5,7 @@ import { LoginPage } from "@pages/LoginPage";
 import { DashboardPage } from "@features/dashboard/pages/DashboardPage";
 import { IncidentsPage } from "@features/incidents/pages/IncidentsPage";
 import { AnalyticsPage } from "@features/analytics/pages/AnalyticsPage";
+import { SpatialPage } from "@features/spatial/pages/SpatialPage";
 import { RecommendationsPage } from "@features/recommendations/pages/RecommendationsPage";
 import { DistrictsPage } from "@features/districts/pages/DistrictsPage";
 
@@ -42,6 +43,16 @@ export const AppRoutes = () => {
           <ProtectedRoute>
             <MainLayout>
               <AnalyticsPage />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/spatial"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <SpatialPage />
             </MainLayout>
           </ProtectedRoute>
         }

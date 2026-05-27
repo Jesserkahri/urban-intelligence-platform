@@ -149,6 +149,46 @@ public class IncidentService {
             .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<IncidentResponse> getIncidentsByGeoFilter(
+            Double minLat,
+            Double maxLat,
+            Double minLon,
+            Double maxLon,
+            String severity,
+            Long districtId) {
+        log.debug(
+            "Fetching geo-filtered incidents bounds={} {} {} {} severity={} districtId={}",
+            minLat,
+            maxLat,
+            minLon,
+            maxLon,
+            severity,
+            districtId);
+
+        List<Incident> incidents;
+        if (minLat != null && maxLat != null && minLon != null && maxLon != null) {
+            incidents = incidentRepository.findByLatitudeBetweenAndLongitudeBetween(
+                minLat, maxLat, minLon, maxLon);
+        } else {
+            incidents = incidentRepository.findAll();
+        }
+
+        if (districtId != null) {
+            incidents = incidents.stream()
+                .filter(incident -> incident.getDistrict().getId().equals(districtId))
+                .collect(Collectors.toList());
+        }
+
+        if (severity != null && !severity.isBlank()) {
+            incidents = incidents.stream()
+                .filter(incident -> incident.getSeverity().toString().equalsIgnoreCase(severity))
+                .collect(Collectors.toList());
+        }
+
+        return incidents.stream().map(this::mapToResponse).collect(Collectors.toList());
+    }
+
     /**
      * Get recent incidents (within last 7 days)
      */
