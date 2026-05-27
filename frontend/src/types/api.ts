@@ -163,6 +163,7 @@ export interface CategoryTrendResponse {
 }
 
 export interface HotspotResponse {
+  rank?: number;
   districtId: number;
   districtName: string;
   hotspotScore: number;
@@ -170,7 +171,8 @@ export interface HotspotResponse {
   unresolvedIncidentCount: number;
   unresolvedRatio: number;
   averageSeverity: string;
-  riskIntensity: string;
+  riskIntensity?: string;
+  criticalityLevel?: string;
 }
 
 export interface DistrictRiskRankingResponse {

@@ -5,7 +5,10 @@ import { SEVERITY_COLORS } from "@lib/utils";
 
 interface Incident {
   id: number;
-  title: string;
+  title?: string;
+  type?: string;
+  description?: string;
+  districtId?: number;
   districtName?: string;
   severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
   status: string;
@@ -57,10 +60,14 @@ export const RecentIncidents: React.FC<RecentIncidentsProps> = ({
               >
                 <div className="flex-1 min-w-0">
                   <h4 className="font-medium text-sm truncate">
-                    {incident.title}
+                    {incident.title || incident.type || incident.description}
                   </h4>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {incident.districtName && `${incident.districtName} • `}
+                    {incident.districtName
+                      ? `${incident.districtName} • `
+                      : incident.districtId
+                        ? `District ${incident.districtId} • `
+                        : ""}
                     {new Date(incident.createdAt).toLocaleDateString()}
                   </p>
                 </div>

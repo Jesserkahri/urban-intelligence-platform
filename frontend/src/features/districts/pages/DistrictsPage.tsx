@@ -49,7 +49,7 @@ export const DistrictsPage: React.FC = () => {
                           Population
                         </span>
                         <span className="font-medium">
-                          {district.population.toLocaleString()}
+                          {district.population?.toLocaleString() ?? "—"}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
@@ -57,7 +57,7 @@ export const DistrictsPage: React.FC = () => {
                           Sustainability
                         </span>
                         <span className="font-medium">
-                          {district.sustainabilityScore.toFixed(1)}%
+                          {district.sustainabilityScore?.toFixed(1) ?? "—"}%
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
@@ -65,7 +65,7 @@ export const DistrictsPage: React.FC = () => {
                           Risk Score
                         </span>
                         <span className="font-medium">
-                          {district.operationalRiskScore.toFixed(1)}%
+                          {district.operationalRiskScore?.toFixed(1) ?? "—"}%
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">

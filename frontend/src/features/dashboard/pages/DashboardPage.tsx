@@ -14,7 +14,7 @@ import { formatDate } from "@lib/utils";
 import { DistrictRiskRankingResponse } from "@appTypes/api";
 
 export const DashboardPage: React.FC = () => {
-  const { data: dailyTrend, isLoading: isDailyLoading } = useDailyTrends();
+  const { data: dailyTrend } = useDailyTrends();
   const { data: riskRanking, isLoading: isRiskLoading } =
     useDistrictRiskRanking();
   const { data: hotspots, isLoading: isHotspotLoading } = useHotspotRankings(4);
@@ -114,25 +114,28 @@ export const DashboardPage: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-3">
-                {hotspots?.map((hotspot) => (
+                {hotspots?.map((hotspot, index) => (
                   <div
-                    key={hotspot.districtId}
+                    key={hotspot.districtId ?? hotspot.rank ?? index}
                     className="rounded-lg border border-border p-4"
                   >
                     <div className="flex items-center justify-between gap-4">
                       <div>
                         <p className="font-semibold">{hotspot.districtName}</p>
                         <p className="text-sm text-muted-foreground">
-                          {hotspot.incidentCount} incidents •{" "}
-                          {hotspot.unresolvedRatio.toFixed(0)}% unresolved
+                          {hotspot.incidentCount ?? "0"} incidents •{" "}
+                          {(hotspot.unresolvedRatio ?? 0).toFixed(0)}%
+                          unresolved
                         </p>
                       </div>
                       <div className="text-right text-sm">
                         <p className="font-semibold">
-                          {hotspot.hotspotScore.toFixed(1)}
+                          {hotspot.hotspotScore?.toFixed(1) ?? "0.0"}
                         </p>
                         <p className="text-muted-foreground">
-                          {hotspot.riskIntensity}
+                          {hotspot.riskIntensity ??
+                            hotspot.criticalityLevel ??
+                            "—"}
                         </p>
                       </div>
                     </div>

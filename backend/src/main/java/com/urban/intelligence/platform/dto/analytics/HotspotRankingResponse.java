@@ -8,9 +8,12 @@ import lombok.*;
 @NoArgsConstructor
 public class HotspotRankingResponse {
     private Integer rank;
+    private Long districtId;
     private String districtName;
     private Double hotspotScore;
-    private String criticalityLevel;
+    private Integer incidentCount;
     private Integer unresolvedIncidents;
+    private Double unresolvedRatio;
+    private String criticalityLevel;
     private String averageSeverity;
 }

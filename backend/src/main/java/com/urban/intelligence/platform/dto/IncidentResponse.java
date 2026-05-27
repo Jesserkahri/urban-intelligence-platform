@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 @Builder
 public class IncidentResponse {
     private Long id;
+    private String title;
     private String type;
     private String description;
     private String severity;
@@ -20,6 +21,9 @@ public class IncidentResponse {
 
     @JsonProperty("district_id")
     private Long districtId;
+
+    @JsonProperty("district_name")
+    private String districtName;
 
     private String status;
 

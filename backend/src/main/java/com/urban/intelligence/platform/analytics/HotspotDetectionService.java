@@ -88,10 +88,13 @@ public class HotspotDetectionService {
             HotspotResponse hotspot = hotspots.get(i);
             ranking.add(HotspotRankingResponse.builder()
                 .rank(i + 1)
+                .districtId(hotspot.getDistrictId())
                 .districtName(hotspot.getDistrictName())
                 .hotspotScore(hotspot.getHotspotScore())
-                .criticalityLevel(determineCriticality(hotspot.getHotspotScore()))
+                .incidentCount(hotspot.getIncidentCount())
                 .unresolvedIncidents(hotspot.getUnresolvedIncidentCount())
+                .unresolvedRatio(hotspot.getUnresolvedRatio())
+                .criticalityLevel(determineCriticality(hotspot.getHotspotScore()))
                 .averageSeverity(hotspot.getAverageSeverity())
                 .build());
         }
