@@ -7,7 +7,6 @@ import {
   RecommendationQueryParams,
 } from "@services/recommendations";
 import {
-  Recommendation,
   RecommendationCreateRequest,
   RecommendationUpdateRequest,
 } from "@appTypes/api";

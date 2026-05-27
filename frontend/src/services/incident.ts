@@ -5,7 +5,6 @@ import {
   Incident,
   IncidentCreateRequest,
   IncidentUpdateRequest,
-  IncidentSeverity,
   IncidentStatus,
   PageableResponse,
 } from "@appTypes/api";

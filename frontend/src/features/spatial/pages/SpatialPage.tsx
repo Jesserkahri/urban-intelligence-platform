@@ -9,10 +9,11 @@ import {
   useMapEvents,
 } from "react-leaflet";
 import { AlertTriangle, Globe2, Layers, MapPin, Target } from "lucide-react";
+import type { LatLngExpression } from "leaflet";
 import { useDistricts } from "@hooks/useDistricts";
 import { useIncidentGeoPoints } from "@hooks/useSpatial";
 import { districtGeoJson } from "@/data/districtBoundaries";
-import { Incident, District } from "@appTypes/api";
+import { Incident } from "@appTypes/api";
 import { KPICard } from "@components/common/KPICard";
 import { cn } from "@lib/utils";
 
@@ -25,7 +26,7 @@ const severityColors: Record<string, string> = {
 
 const severityOptions = ["ALL", "CRITICAL", "HIGH", "MEDIUM", "LOW"] as const;
 
-const defaultCenter: [number, number] = [40.747, -73.995];
+const defaultCenter: LatLngExpression = [40.747, -73.995];
 
 function getClusterKey(lat: number, lon: number, resolution: number) {
   return `${Math.round(lat / resolution)}-${Math.round(lon / resolution)}`;
@@ -44,7 +45,16 @@ function useMapViewport(
   setZoom: (zoom: number) => void,
 ) {
   useMapEvents({
-    moveend: (event) => {
+    moveend: (event: {
+      target: {
+        getBounds: () => {
+          getSouth: () => number;
+          getWest: () => number;
+          getNorth: () => number;
+          getEast: () => number;
+        };
+      };
+    }) => {
       const bounds = event.target.getBounds();
       setBounds([
         bounds.getSouth(),
@@ -53,7 +63,7 @@ function useMapViewport(
         bounds.getEast(),
       ]);
     },
-    zoomend: (event) => {
+    zoomend: (event: { target: { getZoom: () => number } }) => {
       setZoom(event.target.getZoom());
     },
   });
@@ -167,16 +177,24 @@ export const SpatialPage: React.FC = () => {
   }, [filteredIncidents]);
 
   const selectedDistrictName = districts.find(
-    (district) => district.id === selectedDistrictId,
+    (district: { id: number }) => district.id === selectedDistrictId,
   )?.name;
   const activeIncidentCount = filteredIncidents.length;
   const hotspotScore = filteredIncidents.filter(
-    (incident) => incident.severity === "CRITICAL",
+    (incident: Incident) => incident.severity === "CRITICAL",
   ).length;
 
-  const styleDistrictFeature = (feature: any) => {
+  const styleDistrictFeature: (feature?: GeoJSON.Feature) => {
+    color: string;
+    weight: number;
+    dashArray: string;
+    fillOpacity: number;
+    fillColor: string;
+  } = (feature) => {
+    const props = feature?.properties as Record<string, string> | undefined;
     const district = districts.find(
-      (districtItem) => districtItem.name === feature.properties?.name,
+      (districtItem: { name: string; operationalRiskScore: number }) =>
+        districtItem.name === props?.name,
     );
     return {
       color: "#1f2937",
@@ -238,7 +256,7 @@ export const SpatialPage: React.FC = () => {
               <MapContainer
                 center={defaultCenter}
                 zoom={13}
-                scrollWheelZoom
+                scrollWheelZoom={true}
                 className="h-full w-full"
               >
                 <TileLayer
@@ -246,7 +264,7 @@ export const SpatialPage: React.FC = () => {
                   url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
                 />
                 <GeoJSON
-                  data={districtGeoJson as any}
+                  data={districtGeoJson as GeoJSON.GeoJsonObject}
                   style={styleDistrictFeature}
                 />
                 <MapInteractionHandler
@@ -342,7 +360,7 @@ export const SpatialPage: React.FC = () => {
                   className="mt-2 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                 >
                   <option value="">All districts</option>
-                  {districts.map((district) => (
+                  {districts.map((district: { id: number; name: string }) => (
                     <option key={district.id} value={district.id}>
                       {district.name}
                     </option>
@@ -406,18 +424,26 @@ export const SpatialPage: React.FC = () => {
               </div>
             </div>
             <div className="space-y-3">
-              {districts.slice(0, 4).map((district) => (
-                <div
-                  key={district.id}
-                  className="rounded-lg border border-border p-3"
-                >
-                  <p className="font-semibold">{district.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Operational risk: {district.operationalRiskScore.toFixed(1)}
-                    %
-                  </p>
-                </div>
-              ))}
+              {districts
+                .slice(0, 4)
+                .map(
+                  (district: {
+                    id: number;
+                    name: string;
+                    operationalRiskScore: number;
+                  }) => (
+                    <div
+                      key={district.id}
+                      className="rounded-lg border border-border p-3"
+                    >
+                      <p className="font-semibold">{district.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Operational risk:{" "}
+                        {district.operationalRiskScore.toFixed(1)}%
+                      </p>
+                    </div>
+                  ),
+                )}
             </div>
           </div>
         </aside>

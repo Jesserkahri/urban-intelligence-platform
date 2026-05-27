@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { Badge } from "@components/ui/Badge";
 import { Button } from "@components/ui/Button";
 import { Input } from "@components/ui/Input";
@@ -10,7 +10,6 @@ import {
   IncidentCreateRequest,
   IncidentStatus,
   IncidentSeverity,
-  IncidentUpdateRequest,
 } from "@appTypes/api";
 import { IncidentQueryParams } from "@services/incident";
 import {
@@ -84,7 +83,7 @@ export const IncidentsPage: React.FC = () => {
     isFetching: isIncidentsFetching,
   } = useIncidents(incidentQueryParams);
 
-  const { data: districtList, isLoading: isDistrictsLoading } = useDistricts({
+  const { data: districtList } = useDistricts({
     page: 0,
     size: 100,
     sort: "name,asc",
