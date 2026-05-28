@@ -1,8 +1,10 @@
 import React, { useState } from "react";
+import { Plus } from "lucide-react";
 import { Badge } from "@components/ui/Badge";
 import { Button } from "@components/ui/Button";
 import { Input } from "@components/ui/Input";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/Card";
+import { Dialog } from "@components/ui/Dialog";
 import { DataTable, DataTableColumn } from "@components/common/DataTable";
 import { FormField } from "@components/common/FormField";
 import {
@@ -66,6 +68,7 @@ export const IncidentsPage: React.FC = () => {
     null,
   );
   const [formError, setFormError] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const incidentQueryParams: IncidentQueryParams = {
     page,
@@ -129,7 +132,14 @@ export const IncidentsPage: React.FC = () => {
     },
   ];
 
-  const handleSelectIncident = (incident: Incident) => {
+  const openCreateDialog = () => {
+    setSelectedIncidentId(null);
+    setForm(defaultFormState);
+    setFormError(null);
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (incident: Incident) => {
     setSelectedIncidentId(incident.id);
     setForm({
       type: incident.type,
@@ -140,10 +150,12 @@ export const IncidentsPage: React.FC = () => {
       districtId: incident.districtId,
       status: incident.status,
     });
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setFormError(null);
+    setDialogOpen(true);
   };
 
-  const resetForm = () => {
+  const closeDialog = () => {
+    setDialogOpen(false);
     setSelectedIncidentId(null);
     setForm(defaultFormState);
     setFormError(null);
@@ -193,7 +205,7 @@ export const IncidentsPage: React.FC = () => {
           districtId: Number(form.districtId),
         });
       }
-      resetForm();
+      closeDialog();
     } catch (error) {
       setFormError(
         "Unable to save incident. Please review your input and try again.",
@@ -227,7 +239,7 @@ export const IncidentsPage: React.FC = () => {
       <Button
         size="sm"
         variant="outline"
-        onClick={() => handleSelectIncident(incident)}
+        onClick={() => openEditDialog(incident)}
       >
         Edit
       </Button>
@@ -254,26 +266,31 @@ export const IncidentsPage: React.FC = () => {
 
   const incidentCount = incidentPage?.totalElements ?? 0;
 
+  const isSubmitting = createMutation.isPending || updateMutation.isPending;
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Incidents</h1>
-        <p className="text-muted-foreground mt-2">
-          View and manage all incidents across districts.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Incidents</h1>
+          <p className="text-muted-foreground mt-2">
+            View and manage all incidents across districts.
+          </p>
+        </div>
+        <Button onClick={openCreateDialog}>
+          <Plus className="mr-2 h-4 w-4" />
+          Create incident
+        </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {selectedIncidentId ? "Edit Incident" : "Create Incident"}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form
-            onSubmit={handleSubmit}
-            className="grid gap-6 lg:grid-cols-[1.5fr_1fr]"
-          >
+      {/* Create / Edit Dialog */}
+      <Dialog
+        open={dialogOpen}
+        onClose={closeDialog}
+        title={selectedIncidentId ? "Edit Incident" : "Create Incident"}
+      >
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
             <div className="space-y-4">
               <FormField
                 label="Type"
@@ -328,25 +345,27 @@ export const IncidentsPage: React.FC = () => {
                   </select>
                 </FormField>
 
-                <FormField label="Status" htmlFor="incident-status">
-                  <select
-                    id="incident-status"
-                    value={form.status}
-                    onChange={(event) =>
-                      setForm({
-                        ...form,
-                        status: event.target.value as IncidentStatus,
-                      })
-                    }
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none"
-                  >
-                    {statusOptions.map((statusOption) => (
-                      <option key={statusOption} value={statusOption}>
-                        {statusOption}
-                      </option>
-                    ))}
-                  </select>
-                </FormField>
+                {selectedIncidentId && (
+                  <FormField label="Status" htmlFor="incident-status">
+                    <select
+                      id="incident-status"
+                      value={form.status}
+                      onChange={(event) =>
+                        setForm({
+                          ...form,
+                          status: event.target.value as IncidentStatus,
+                        })
+                      }
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none"
+                    >
+                      {statusOptions.map((statusOption) => (
+                        <option key={statusOption} value={statusOption}>
+                          {statusOption}
+                        </option>
+                      ))}
+                    </select>
+                  </FormField>
+                )}
               </div>
             </div>
 
@@ -402,32 +421,29 @@ export const IncidentsPage: React.FC = () => {
                   />
                 </FormField>
               </div>
-
-              {formError && (
-                <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm text-destructive">
-                  {formError}
-                </div>
-              )}
-
-              <div className="flex flex-wrap gap-3 pt-2">
-                <Button
-                  type="submit"
-                  disabled={
-                    createMutation.isPending || updateMutation.isPending
-                  }
-                >
-                  {selectedIncidentId ? "Save changes" : "Create incident"}
-                </Button>
-                {selectedIncidentId && (
-                  <Button type="button" variant="outline" onClick={resetForm}>
-                    Cancel edit
-                  </Button>
-                )}
-              </div>
             </div>
-          </form>
-        </CardContent>
-      </Card>
+          </div>
+
+          {formError && (
+            <div className="rounded-md border border-destructive bg-destructive/10 p-3 text-sm text-destructive">
+              {formError}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 border-t border-border pt-4">
+            <Button type="button" variant="outline" onClick={closeDialog}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting
+                ? "Saving..."
+                : selectedIncidentId
+                  ? "Save changes"
+                  : "Create incident"}
+            </Button>
+          </div>
+        </form>
+      </Dialog>
 
       <Card>
         <CardHeader>

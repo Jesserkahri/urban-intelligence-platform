@@ -439,7 +439,9 @@ export const SpatialPage: React.FC = () => {
                       <p className="font-semibold">{district.name}</p>
                       <p className="text-xs text-muted-foreground">
                         Operational risk:{" "}
-                        {district.operationalRiskScore.toFixed(1)}%
+                        {district.operationalRiskScore != null
+                          ? `${district.operationalRiskScore.toFixed(1)}%`
+                          : "N/A"}
                       </p>
                     </div>
                   ),

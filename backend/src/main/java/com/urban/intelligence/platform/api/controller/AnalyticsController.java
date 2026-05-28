@@ -164,15 +164,18 @@ public class AnalyticsController {
 
     @PostMapping("/recommendations/generate/{districtId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'ANALYST')")
-    public ResponseEntity<OperationalInsightResponse> generateDistrictRecommendations(@PathVariable Long districtId) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(insightService.generateDistrictRecommendations(districtId));
+    public ResponseEntity<ApiResponse<OperationalInsightResponse>> generateDistrictRecommendations(@PathVariable Long districtId) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(insightService.generateDistrictRecommendations(districtId), 
+                    "Recommendations generated successfully for district"));
     }
 
     @GetMapping("/insights/operational")
-    public ResponseEntity<Page<OperationalInsightResponse>> getOperationalInsights(
+    public ResponseEntity<ApiResponse<Page<OperationalInsightResponse>>> getOperationalInsights(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(insightService.generateAllRecommendations(PageRequest.of(page, Math.min(size, 50))));
+        return ResponseEntity.ok(ApiResponse.success(
+            insightService.generateAllRecommendations(PageRequest.of(page, Math.min(size, 50)))));
     }
 
     @GetMapping("/insights/dashboard")
