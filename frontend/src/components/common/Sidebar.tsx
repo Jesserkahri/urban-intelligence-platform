@@ -7,6 +7,7 @@ import {
   Lightbulb,
   MapPin,
   Globe2,
+  Leaf,
   X,
 } from "lucide-react";
 import { useAuth } from "@context/auth";
@@ -52,6 +53,12 @@ const navItems: Array<{
     label: "Recommendations",
     icon: Lightbulb,
     roles: ["ADMIN", "OPERATOR", "ANALYST"],
+  },
+  {
+    href: "/sustainability",
+    label: "Sustainability",
+    icon: Leaf,
+    roles: ["ADMIN", "OPERATOR", "ANALYST", "VIEWER"],
   },
   {
     href: "/districts",

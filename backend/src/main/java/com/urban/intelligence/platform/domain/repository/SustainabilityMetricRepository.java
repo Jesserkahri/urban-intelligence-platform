@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * SustainabilityMetricRepository - Data access for sustainability metrics
+ * SustainabilityMetricRepository - Data access for sustainability metrics.
  */
 @Repository
 public interface SustainabilityMetricRepository extends JpaRepository<SustainabilityMetric, Long> {
@@ -26,10 +26,11 @@ public interface SustainabilityMetricRepository extends JpaRepository<Sustainabi
     List<SustainabilityMetric> findByDistrict_IdAndMetricType(Long districtId, String metricType);
 
     @Query("SELECT sm FROM SustainabilityMetric sm WHERE sm.district.id = :districtId " +
-            "AND sm.metricType = :metricType ORDER BY sm.timestamp DESC LIMIT 1")
-    SustainabilityMetric findLatestByDistrictAndType(
+            "AND sm.metricType = :metricType ORDER BY sm.timestamp DESC")
+    List<SustainabilityMetric> findLatestByDistrictAndType(
             @Param("districtId") Long districtId,
-            @Param("metricType") String metricType);
+            @Param("metricType") String metricType,
+            Pageable pageable);
 
     @Query("SELECT sm FROM SustainabilityMetric sm WHERE sm.status = 'CRITICAL' " +
             "ORDER BY sm.timestamp DESC")
@@ -41,5 +42,11 @@ public interface SustainabilityMetricRepository extends JpaRepository<Sustainabi
             @Param("districtId") Long districtId,
             @Param("since") LocalDateTime since);
 
+    List<SustainabilityMetric> findByTimestampAfter(LocalDateTime timestamp);
+
+    List<SustainabilityMetric> findByMetricTypeAndTimestampAfter(String metricType, LocalDateTime timestamp);
+
     long countByStatus(String status);
+
+    long countByMetricTypeAndStatus(String metricType, String status);
 }

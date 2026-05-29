@@ -82,15 +82,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    /**
-     * Extract JWT token from the Authorization header.
-     * Expected format: "Bearer <token>"
-     */
-    private String extractJwtFromRequest(HttpServletRequest request) {
-        String bearerToken = request.getHeader("Authorization");
-        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7);
-        }
-        return null;
+/**
+ * Extract JWT token from the Authorization header.
+ * Expected format: "Bearer <token>"
+ */
+private String extractJwtFromRequest(HttpServletRequest request) {
+    String bearerToken = request.getHeader("Authorization");
+
+    if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
+        return bearerToken.substring(7);
     }
-}
+
+    String queryToken = request.getParameter("access_token");
+    if (StringUtils.hasText(queryToken) && request.getRequestURI().startsWith("/api/operations/stream")) {
+        return queryToken;
+    }
+
+    return null;
+}}
+

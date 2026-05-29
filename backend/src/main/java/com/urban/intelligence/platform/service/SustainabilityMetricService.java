@@ -1,14 +1,15 @@
 package com.urban.intelligence.platform.service;
 
-import com.urban.intelligence.platform.domain.entity.SustainabilityMetric;
 import com.urban.intelligence.platform.domain.entity.District;
-import com.urban.intelligence.platform.domain.repository.SustainabilityMetricRepository;
+import com.urban.intelligence.platform.domain.entity.SustainabilityMetric;
 import com.urban.intelligence.platform.domain.repository.DistrictRepository;
-import com.urban.intelligence.platform.dto.SustainabilityMetricResponse;
+import com.urban.intelligence.platform.domain.repository.SustainabilityMetricRepository;
 import com.urban.intelligence.platform.dto.SustainabilityMetricCreateRequest;
+import com.urban.intelligence.platform.dto.SustainabilityMetricResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,7 +18,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * SustainabilityMetricService - Business logic for sustainability metrics
+ * SustainabilityMetricService - Business logic for sustainability metrics.
  */
 @Service
 @RequiredArgsConstructor
@@ -27,9 +28,6 @@ public class SustainabilityMetricService {
     private final SustainabilityMetricRepository metricRepository;
     private final DistrictRepository districtRepository;
 
-    /**
-     * Record a new sustainability metric
-     */
     @Transactional
     public SustainabilityMetricResponse recordMetric(SustainabilityMetricCreateRequest request) {
         log.info("Recording sustainability metric: {} for district: {}", request.getMetricType(), request.getDistrictId());
@@ -39,7 +37,7 @@ public class SustainabilityMetricService {
 
         SustainabilityMetric metric = SustainabilityMetric.builder()
                 .district(district)
-                .metricType(request.getMetricType())
+                .metricType(request.getMetricType().toUpperCase())
                 .value(request.getValue())
                 .unit(request.getUnit())
                 .threshold(request.getThreshold())
@@ -48,67 +46,42 @@ public class SustainabilityMetricService {
                 .build();
 
         SustainabilityMetric saved = metricRepository.save(metric);
-        log.info("Metric recorded with ID: {}", saved.getId());
         return mapToResponse(saved);
     }
 
-    /**
-     * Get all metrics for a district
-     */
     @Transactional(readOnly = true)
     public Page<SustainabilityMetricResponse> getDistrictMetrics(Long districtId, Pageable pageable) {
-        log.debug("Fetching sustainability metrics for district: {}", districtId);
-        return metricRepository.findByDistrict_Id(districtId, pageable)
-                .map(this::mapToResponse);
+        return metricRepository.findByDistrict_Id(districtId, pageable).map(this::mapToResponse);
     }
 
-    /**
-     * Get metrics by type across all districts
-     */
     @Transactional(readOnly = true)
     public Page<SustainabilityMetricResponse> getMetricsByType(String metricType, Pageable pageable) {
-        log.debug("Fetching metrics by type: {}", metricType);
-        return metricRepository.findByMetricType(metricType, pageable)
-                .map(this::mapToResponse);
+        return metricRepository.findByMetricType(metricType.toUpperCase(), pageable).map(this::mapToResponse);
     }
 
-    /**
-     * Get critical metrics (alerts)
-     */
     @Transactional(readOnly = true)
     public List<SustainabilityMetricResponse> getCriticalMetrics() {
-        log.debug("Fetching critical sustainability metrics");
-        return metricRepository.findCriticalMetrics().stream()
-                .map(this::mapToResponse)
-                .toList();
+        return metricRepository.findCriticalMetrics().stream().map(this::mapToResponse).toList();
     }
 
-    /**
-     * Get recent metrics for a district
-     */
     @Transactional(readOnly = true)
     public List<SustainabilityMetricResponse> getRecentMetrics(Long districtId, int hoursBack) {
         LocalDateTime since = LocalDateTime.now().minusHours(hoursBack);
-        return metricRepository.findRecentMetrics(districtId, since).stream()
-                .map(this::mapToResponse)
-                .toList();
+        return metricRepository.findRecentMetrics(districtId, since).stream().map(this::mapToResponse).toList();
     }
 
-    /**
-     * Get latest value for a specific metric type
-     */
     @Transactional(readOnly = true)
     public SustainabilityMetricResponse getLatestMetric(Long districtId, String metricType) {
-        SustainabilityMetric metric = metricRepository.findLatestByDistrictAndType(districtId, metricType);
-        if (metric == null) {
+        List<SustainabilityMetric> metrics = metricRepository.findLatestByDistrictAndType(
+                districtId,
+                metricType.toUpperCase(),
+                PageRequest.of(0, 1));
+        if (metrics.isEmpty()) {
             throw new IllegalArgumentException("No metric found for district: " + districtId + " type: " + metricType);
         }
-        return mapToResponse(metric);
+        return mapToResponse(metrics.get(0));
     }
 
-    /**
-     * Map entity to response DTO
-     */
     private SustainabilityMetricResponse mapToResponse(SustainabilityMetric metric) {
         return SustainabilityMetricResponse.builder()
                 .id(metric.getId())

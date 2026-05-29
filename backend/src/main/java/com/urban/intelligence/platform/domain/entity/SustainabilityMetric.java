@@ -5,15 +5,7 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 /**
- * SustainabilityMetric Entity - Environmental and sustainability measurements
- *
- * Tracks key sustainability indicators:
- * - Air quality indices
- * - Emissions levels
- * - Waste management metrics
- * - Energy consumption
- * - Water usage
- * - Green space coverage
+ * SustainabilityMetric Entity - Environmental and sustainability measurements.
  */
 @Entity
 @Table(name = "sustainability_metrics", indexes = {
@@ -37,44 +29,65 @@ public class SustainabilityMetric {
     private District district;
 
     @Column(nullable = false, length = 100)
-    private String metricType; // AIR_QUALITY, EMISSIONS, WASTE, ENERGY, WATER, GREEN_SPACE
+    private String metricType;
 
     @Column(nullable = false)
-    private Double value; // Current metric value
+    private Double value;
 
     @Column(nullable = false)
-    private String unit; // µg/m³, kg CO2e, tons, kWh, m³, %
+    private String unit;
 
     @Column(nullable = false)
-    private Double threshold; // Critical threshold for alert
+    private Double threshold;
 
     @Column(nullable = false)
-    private String status; // GOOD, MODERATE, POOR, CRITICAL
+    private String status;
 
     @Column(nullable = false)
     private LocalDateTime timestamp;
 
     @Column(columnDefinition = "TEXT")
-    private String source; // Sensor ID, API source, calculation method
+    private String source;
 
     @PrePersist
     protected void onCreate() {
         if (timestamp == null) {
             timestamp = LocalDateTime.now();
         }
+        updateStatus();
     }
 
     @PreUpdate
     protected void onUpdate() {
-        // Status determined by comparing value to threshold
-        if (value <= threshold * 0.5) {
-            this.status = "GOOD";
-        } else if (value <= threshold * 0.75) {
+        updateStatus();
+    }
+
+    private void updateStatus() {
+        if (value == null || threshold == null || threshold <= 0) {
             this.status = "MODERATE";
-        } else if (value <= threshold) {
-            this.status = "POOR";
-        } else {
-            this.status = "CRITICAL";
+            return;
         }
+
+        boolean higherIsBetter = metricType != null && (
+            metricType.equals("GREEN_SPACE") ||
+            metricType.equals("RECYCLING_RATE") ||
+            metricType.equals("TRANSIT_EFFICIENCY") ||
+            metricType.equals("MOBILITY_FLOW") ||
+            metricType.equals("RENEWABLE_ENERGY")
+        );
+
+        double ratio = value / threshold;
+        if (higherIsBetter) {
+            if (ratio >= 1.0) this.status = "GOOD";
+            else if (ratio >= 0.75) this.status = "MODERATE";
+            else if (ratio >= 0.5) this.status = "POOR";
+            else this.status = "CRITICAL";
+            return;
+        }
+
+        if (ratio <= 0.5) this.status = "GOOD";
+        else if (ratio <= 0.75) this.status = "MODERATE";
+        else if (ratio <= 1.0) this.status = "POOR";
+        else this.status = "CRITICAL";
     }
 }

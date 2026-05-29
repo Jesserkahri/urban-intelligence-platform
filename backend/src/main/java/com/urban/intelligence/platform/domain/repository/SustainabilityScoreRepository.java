@@ -8,16 +8,18 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 /**
- * SustainabilityScoreRepository - Data access for district sustainability ratings
+ * SustainabilityScoreRepository - Data access for district sustainability ratings.
  */
 @Repository
 public interface SustainabilityScoreRepository extends JpaRepository<SustainabilityScore, Long> {
 
-    Optional<SustainabilityScore> findByDistrictIdOrderByCalculatedAtDesc(Long districtId);
+
+    Optional<SustainabilityScore> findFirstByDistrictIdOrderByCalculatedAtDesc(Long districtId);
 
     Page<SustainabilityScore> findByRating(String rating, Pageable pageable);
 
@@ -40,6 +42,14 @@ public interface SustainabilityScoreRepository extends JpaRepository<Sustainabil
     @Query("SELECT AVG(ss.environmentalScore) FROM SustainabilityScore ss")
     Double getAverageEnvironmentalScore();
 
+    @Query("SELECT AVG(ss.mobilityScore) FROM SustainabilityScore ss")
+    Double getAverageMobilityScore();
+
     @Query("SELECT COUNT(ss) FROM SustainabilityScore ss WHERE ss.rating = :rating")
     long countByRating(@Param("rating") String rating);
+
+    List<SustainabilityScore> findByDistrict_IdAndCalculatedAtAfterOrderByCalculatedAtAsc(
+            Long districtId,
+            LocalDateTime calculatedAt);
 }
+

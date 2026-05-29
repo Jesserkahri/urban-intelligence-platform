@@ -8,6 +8,7 @@ import { AnalyticsPage } from "@features/analytics/pages/AnalyticsPage";
 import { SpatialPage } from "@features/spatial/pages/SpatialPage";
 import { RecommendationsPage } from "@features/recommendations/pages/RecommendationsPage";
 import { DistrictsPage } from "@features/districts/pages/DistrictsPage";
+import { SustainabilityPage } from "@features/sustainability/pages/SustainabilityPage";
 
 export const AppRoutes = () => {
   return (
@@ -53,6 +54,18 @@ export const AppRoutes = () => {
           <ProtectedRoute>
             <MainLayout>
               <SpatialPage />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sustainability"
+        element={
+          <ProtectedRoute
+            requiredRole={["ADMIN", "OPERATOR", "ANALYST", "VIEWER"]}
+          >
+            <MainLayout>
+              <SustainabilityPage />
             </MainLayout>
           </ProtectedRoute>
         }

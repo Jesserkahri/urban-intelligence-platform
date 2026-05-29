@@ -16,6 +16,15 @@ public class RecommendationResponse {
     private String priority;
     private String message;
 
+    @JsonProperty("predicted_impact")
+    private Double predictedImpact;
+
+    @JsonProperty("intervention_effectiveness")
+    private Double interventionEffectiveness;
+
+    @JsonProperty("operational_confidence")
+    private Double operationalConfidence;
+
     @JsonProperty("district_id")
     private Long districtId;
 
