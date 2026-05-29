@@ -84,7 +84,12 @@ export interface DistrictMetricsResponse {
 
 // Incident types
 export type IncidentSeverity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
-export type IncidentStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
+export type IncidentStatus =
+  | "REPORTED"
+  | "OPEN"
+  | "IN_PROGRESS"
+  | "RESOLVED"
+  | "CLOSED";
 
 export interface Incident {
   id: number;

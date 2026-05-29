@@ -43,7 +43,7 @@ public class IncidentService {
             .latitude(request.getLatitude())
             .longitude(request.getLongitude())
             .district(district)
-            .status(Incident.IncidentStatus.REPORTED)
+            .status(Incident.IncidentStatus.OPEN)
             .build();
 
         Incident savedIncident = incidentRepository.save(incident);

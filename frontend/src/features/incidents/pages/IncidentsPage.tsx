@@ -32,6 +32,7 @@ const severityOptions: IncidentSeverity[] = [
 ];
 
 const statusOptions: IncidentStatus[] = [
+  "REPORTED",
   "OPEN",
   "IN_PROGRESS",
   "RESOLVED",
@@ -215,7 +216,7 @@ export const IncidentsPage: React.FC = () => {
 
   const handleStatusToggle = async (incident: Incident) => {
     const nextStatus: IncidentStatus =
-      incident.status === "OPEN"
+      incident.status === "REPORTED" || incident.status === "OPEN"
         ? "IN_PROGRESS"
         : incident.status === "IN_PROGRESS"
           ? "RESOLVED"
@@ -251,7 +252,9 @@ export const IncidentsPage: React.FC = () => {
           incident.status === "RESOLVED" || incident.status === "CLOSED"
         }
       >
-        {incident.status === "OPEN" ? "Start" : "Advance"}
+        {incident.status === "REPORTED" || incident.status === "OPEN"
+          ? "Start"
+          : "Advance"}
       </Button>
       <Button
         size="sm"

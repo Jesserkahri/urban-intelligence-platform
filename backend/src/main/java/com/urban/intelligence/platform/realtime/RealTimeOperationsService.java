@@ -220,6 +220,7 @@ public class RealTimeOperationsService {
         Map<String, Long> severityCounters = incidents.stream()
                 .collect(Collectors.groupingBy(incident -> incident.getSeverity().name(), Collectors.counting()));
         long unresolved = incidents.stream().filter(incident -> incident.getStatus() == Incident.IncidentStatus.REPORTED
+                || incident.getStatus() == Incident.IncidentStatus.OPEN
                 || incident.getStatus() == Incident.IncidentStatus.IN_PROGRESS).count();
         long active = incidents.stream().filter(incident -> incident.getStatus() != Incident.IncidentStatus.CLOSED
                 && incident.getStatus() != Incident.IncidentStatus.RESOLVED).count();

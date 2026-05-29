@@ -73,6 +73,6 @@ public class Incident {
     }
 
     public enum IncidentStatus {
-        REPORTED, IN_PROGRESS, RESOLVED, CLOSED
+        REPORTED, OPEN, IN_PROGRESS, RESOLVED, CLOSED
     }
 }

@@ -38,6 +38,7 @@ public class HotspotDetectionService {
     );
     private static final List<Incident.IncidentStatus> UNRESOLVED_STATUSES = List.of(
         Incident.IncidentStatus.REPORTED,
+        Incident.IncidentStatus.OPEN,
         Incident.IncidentStatus.IN_PROGRESS
     );
 
@@ -200,7 +201,8 @@ public class HotspotDetectionService {
     }
 
     private boolean isUnresolved(Incident incident) {
-        return incident.getStatus() == Incident.IncidentStatus.REPORTED
+        return incident.getStatus() == Incident.IncidentStatus.OPEN
+            || incident.getStatus() == Incident.IncidentStatus.REPORTED
             || incident.getStatus() == Incident.IncidentStatus.IN_PROGRESS;
     }
 

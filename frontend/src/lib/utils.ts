@@ -37,6 +37,8 @@ export const SEVERITY_COLORS = {
 };
 
 export const STATUS_COLORS = {
+  REPORTED:
+    "bg-purple-50 text-purple-900 dark:bg-purple-900 dark:text-purple-50",
   OPEN: "bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-50",
   IN_PROGRESS: "bg-blue-50 text-blue-900 dark:bg-blue-900 dark:text-blue-50",
   RESOLVED: "bg-green-50 text-green-900 dark:bg-green-900 dark:text-green-50",
