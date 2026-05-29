@@ -49,4 +49,5 @@ export const PRIORITY_COLORS = {
   LOW: "bg-green-50 text-green-900 dark:bg-green-900 dark:text-green-50",
   MEDIUM: "bg-yellow-50 text-yellow-900 dark:bg-yellow-900 dark:text-yellow-50",
   HIGH: "bg-red-50 text-red-900 dark:bg-red-900 dark:text-red-50",
+  CRITICAL: "bg-red-100 text-red-950 dark:bg-red-950 dark:text-red-100",
 };

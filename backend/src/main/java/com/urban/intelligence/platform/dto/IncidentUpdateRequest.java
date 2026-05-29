@@ -14,4 +14,8 @@ public class IncidentUpdateRequest {
     private Double latitude;
     private Double longitude;
     private String status;
+    private String assignedTo;
+    private Boolean acknowledged;
+    private Boolean reviewed;
+    private String reviewNotes;
 }

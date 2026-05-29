@@ -1,7 +1,6 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/Card";
 import { useDistricts } from "@hooks/useDistricts";
-import { formatDate } from "@lib/utils";
 
 export const DistrictsPage: React.FC = () => {
   const { data, isLoading, error } = useDistricts({
@@ -69,9 +68,19 @@ export const DistrictsPage: React.FC = () => {
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Updated</span>
+                        <span className="text-muted-foreground">
+                          Incidents
+                        </span>
                         <span className="font-medium">
-                          {formatDate(district.updatedAt)}
+                          {district.incidentCount ?? 0}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          Recommendations
+                        </span>
+                        <span className="font-medium">
+                          {district.recommendationCount ?? 0}
                         </span>
                       </div>
                     </div>

@@ -1,6 +1,5 @@
 package com.urban.intelligence.platform.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 import java.time.LocalDateTime;
 
@@ -14,7 +13,6 @@ public class SustainabilityMetricResponse {
     private Long districtId;
     private String type;
     
-    @JsonProperty("metric_type")
     private String metricType;
     
     private Double value;
@@ -23,6 +21,5 @@ public class SustainabilityMetricResponse {
     private String status;
     private String source;
     
-    @JsonProperty("created_at")
     private LocalDateTime timestamp;
 }

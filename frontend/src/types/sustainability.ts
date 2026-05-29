@@ -27,7 +27,7 @@ export interface SustainabilityMetricResponse {
   threshold: number;
   status: MetricStatus;
   source: string | null;
-  createdAt: string;
+  timestamp: string;
 }
 
 export interface SustainabilityScoreResponse {

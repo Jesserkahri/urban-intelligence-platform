@@ -1,6 +1,5 @@
 package com.urban.intelligence.platform.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -19,17 +18,19 @@ public class IncidentResponse {
     private Double latitude;
     private Double longitude;
 
-    @JsonProperty("district_id")
     private Long districtId;
 
-    @JsonProperty("district_name")
     private String districtName;
 
     private String status;
+    private String assignedTo;
+    private Boolean acknowledged;
+    private LocalDateTime acknowledgedAt;
+    private Boolean reviewed;
+    private LocalDateTime reviewedAt;
+    private String reviewNotes;
 
-    @JsonProperty("created_at")
     private LocalDateTime createdAt;
 
-    @JsonProperty("updated_at")
     private LocalDateTime updatedAt;
 }

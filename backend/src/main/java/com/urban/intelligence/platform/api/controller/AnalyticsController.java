@@ -48,118 +48,118 @@ public class AnalyticsController {
 
     @PostMapping("/events")
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'ANALYST')")
-    public ResponseEntity<AnalyticsEventResponse> recordEvent(@Valid @RequestBody AnalyticsEventCreateRequest request) {
+    public ResponseEntity<ApiResponse<AnalyticsEventResponse>> recordEvent(@Valid @RequestBody AnalyticsEventCreateRequest request) {
         log.info("CREATE analytics event");
         AnalyticsEventResponse response = analyticsEventService.recordEvent(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response, "Analytics event recorded"));
     }
 
     @GetMapping("/events/{id}")
-    public ResponseEntity<AnalyticsEventResponse> getEvent(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<AnalyticsEventResponse>> getEvent(@PathVariable Long id) {
         log.debug("READ analytics event: {}", id);
         AnalyticsEventResponse response = analyticsEventService.getEventById(id);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/events")
-    public ResponseEntity<Page<AnalyticsEventResponse>> getAllEvents(
+    public ResponseEntity<ApiResponse<Page<AnalyticsEventResponse>>> getAllEvents(
             @PageableDefault(size = 20, sort = "timestamp", direction = Sort.Direction.DESC) Pageable pageable) {
         log.debug("READ all analytics events");
         Page<AnalyticsEventResponse> response = analyticsEventService.getAllEvents(pageable);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/events/category/{category}")
-    public ResponseEntity<Page<AnalyticsEventResponse>> getEventsByCategory(
+    public ResponseEntity<ApiResponse<Page<AnalyticsEventResponse>>> getEventsByCategory(
             @PathVariable String category,
             @PageableDefault(size = 20, sort = "timestamp", direction = Sort.Direction.DESC) Pageable pageable) {
         log.debug("READ events by category: {}", category);
         Page<AnalyticsEventResponse> response = analyticsEventService.getEventsByCategory(category, pageable);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/events/source/{source}")
-    public ResponseEntity<Page<AnalyticsEventResponse>> getEventsBySource(
+    public ResponseEntity<ApiResponse<Page<AnalyticsEventResponse>>> getEventsBySource(
             @PathVariable String source,
             @PageableDefault(size = 20, sort = "timestamp", direction = Sort.Direction.DESC) Pageable pageable) {
         log.debug("READ events by source: {}", source);
         Page<AnalyticsEventResponse> response = analyticsEventService.getEventsBySource(source, pageable);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/events/recent/high-scoring")
-    public ResponseEntity<List<AnalyticsEventResponse>> getRecentHighScoringEvents() {
+    public ResponseEntity<ApiResponse<List<AnalyticsEventResponse>>> getRecentHighScoringEvents() {
         log.debug("READ recent high-scoring events");
         List<AnalyticsEventResponse> response = analyticsEventService.getRecentHighScoringEvents();
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/aggregates/{category}")
-    public ResponseEntity<AnalyticsAggregateResponse> getCategoryAggregates(@PathVariable String category) {
+    public ResponseEntity<ApiResponse<AnalyticsAggregateResponse>> getCategoryAggregates(@PathVariable String category) {
         log.debug("READ aggregates for category: {}", category);
         AnalyticsAggregateResponse response = analyticsEventService.getCategoryAggregates(category);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @DeleteMapping("/events/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> deleteEvent(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deleteEvent(@PathVariable Long id) {
         log.info("DELETE analytics event: {}", id);
         analyticsEventService.deleteEvent(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ApiResponse.success(null, "Analytics event deleted"));
     }
 
     @GetMapping("/hotspots/district/{districtId}")
-    public ResponseEntity<HotspotResponse> detectDistrictHotspot(@PathVariable Long districtId) {
-        return ResponseEntity.ok(hotspotDetectionService.detectDistrictHotspot(districtId));
+    public ResponseEntity<ApiResponse<HotspotResponse>> detectDistrictHotspot(@PathVariable Long districtId) {
+        return ResponseEntity.ok(ApiResponse.success(hotspotDetectionService.detectDistrictHotspot(districtId)));
     }
 
     @GetMapping("/hotspots")
-    public ResponseEntity<List<HotspotResponse>> detectAllHotspots() {
-        return ResponseEntity.ok(hotspotDetectionService.detectAllHotspots());
+    public ResponseEntity<ApiResponse<List<HotspotResponse>>> detectAllHotspots() {
+        return ResponseEntity.ok(ApiResponse.success(hotspotDetectionService.detectAllHotspots()));
     }
 
     @GetMapping("/hotspots/top")
-    public ResponseEntity<List<HotspotRankingResponse>> getTopCriticalHotspots(
+    public ResponseEntity<ApiResponse<List<HotspotRankingResponse>>> getTopCriticalHotspots(
             @RequestParam(defaultValue = "10") int limit) {
-        return ResponseEntity.ok(hotspotDetectionService.getTopCriticalHotspots(Math.min(limit, 50)));
+        return ResponseEntity.ok(ApiResponse.success(hotspotDetectionService.getTopCriticalHotspots(Math.min(limit, 50))));
     }
 
     @GetMapping("/trends/daily")
-    public ResponseEntity<DailyTrendResponse> analyzeDailyTrends() {
-        return ResponseEntity.ok(trendAggregationService.analyzeDailyTrends());
+    public ResponseEntity<ApiResponse<DailyTrendResponse>> analyzeDailyTrends() {
+        return ResponseEntity.ok(ApiResponse.success(trendAggregationService.analyzeDailyTrends()));
     }
 
     @GetMapping("/trends/weekly")
-    public ResponseEntity<WeeklyTrendResponse> analyzeWeeklyTrends() {
-        return ResponseEntity.ok(trendAggregationService.analyzeWeeklyTrends());
+    public ResponseEntity<ApiResponse<WeeklyTrendResponse>> analyzeWeeklyTrends() {
+        return ResponseEntity.ok(ApiResponse.success(trendAggregationService.analyzeWeeklyTrends()));
     }
 
     @GetMapping("/trends/categories")
-    public ResponseEntity<CategoryTrendResponse> analyzeCategoryTrends() {
-        return ResponseEntity.ok(trendAggregationService.analyzeCategoryTrends());
+    public ResponseEntity<ApiResponse<CategoryTrendResponse>> analyzeCategoryTrends() {
+        return ResponseEntity.ok(ApiResponse.success(trendAggregationService.analyzeCategoryTrends()));
     }
 
     @GetMapping("/districts/risk-ranking")
-    public ResponseEntity<List<DistrictRiskRankingResponse>> getRiskRanking() {
-        return ResponseEntity.ok(riskScoringService.getRiskRanking());
+    public ResponseEntity<ApiResponse<List<DistrictRiskRankingResponse>>> getRiskRanking() {
+        return ResponseEntity.ok(ApiResponse.success(riskScoringService.getRiskRanking()));
     }
 
     @GetMapping("/districts/{districtId}/risk-analysis")
-    public ResponseEntity<DistrictRiskAnalysisResponse> analyzeDistrictRisk(@PathVariable Long districtId) {
-        return ResponseEntity.ok(riskScoringService.analyzeDistrictRisk(districtId));
+    public ResponseEntity<ApiResponse<DistrictRiskAnalysisResponse>> analyzeDistrictRisk(@PathVariable Long districtId) {
+        return ResponseEntity.ok(ApiResponse.success(riskScoringService.analyzeDistrictRisk(districtId)));
     }
 
     @GetMapping("/districts/risk-level/{riskLevel}")
-    public ResponseEntity<List<DistrictRiskRankingResponse>> getDistrictsByRiskLevel(@PathVariable String riskLevel) {
-        return ResponseEntity.ok(riskScoringService.getDistrictsByRiskLevel(riskLevel.toUpperCase()));
+    public ResponseEntity<ApiResponse<List<DistrictRiskRankingResponse>>> getDistrictsByRiskLevel(@PathVariable String riskLevel) {
+        return ResponseEntity.ok(ApiResponse.success(riskScoringService.getDistrictsByRiskLevel(riskLevel.toUpperCase())));
     }
 
     @GetMapping("/recommendations/generated")
-    public ResponseEntity<Page<Recommendation>> getGeneratedRecommendations(
+    public ResponseEntity<ApiResponse<Page<Recommendation>>> getGeneratedRecommendations(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(insightService.getGeneratedRecommendations(PageRequest.of(page, Math.min(size, 100))));
+        return ResponseEntity.ok(ApiResponse.success(insightService.getGeneratedRecommendations(PageRequest.of(page, Math.min(size, 100)))));
     }
 
     @PostMapping("/recommendations/generate/{districtId}")
@@ -179,7 +179,7 @@ public class AnalyticsController {
     }
 
     @GetMapping("/insights/dashboard")
-    public ResponseEntity<DashboardInsightResponse> getDashboardInsights() {
-        return ResponseEntity.ok(insightService.generateDashboardInsights());
+    public ResponseEntity<ApiResponse<DashboardInsightResponse>> getDashboardInsights() {
+        return ResponseEntity.ok(ApiResponse.success(insightService.generateDashboardInsights()));
     }
 }

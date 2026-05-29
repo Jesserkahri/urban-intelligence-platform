@@ -51,6 +51,24 @@ public class Incident {
     @Column(nullable = false)
     private IncidentStatus status;
 
+    @Column(length = 120)
+    private String assignedTo;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean acknowledged = false;
+
+    private LocalDateTime acknowledgedAt;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean reviewed = false;
+
+    private LocalDateTime reviewedAt;
+
+    @Column(columnDefinition = "TEXT")
+    private String reviewNotes;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

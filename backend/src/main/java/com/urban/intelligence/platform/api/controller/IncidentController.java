@@ -1,9 +1,14 @@
 package com.urban.intelligence.platform.api.controller;
 
+import com.urban.intelligence.platform.auth.domain.User;
+import com.urban.intelligence.platform.dto.ActivityEventResponse;
 import com.urban.intelligence.platform.dto.ApiResponse;
+import com.urban.intelligence.platform.dto.IncidentAssignmentRequest;
 import com.urban.intelligence.platform.dto.IncidentCreateRequest;
 import com.urban.intelligence.platform.dto.IncidentResponse;
+import com.urban.intelligence.platform.dto.IncidentReviewRequest;
 import com.urban.intelligence.platform.dto.IncidentUpdateRequest;
+import com.urban.intelligence.platform.service.ActivityAuditService;
 import com.urban.intelligence.platform.service.IncidentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +20,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,6 +32,7 @@ import java.util.List;
 public class IncidentController {
 
     private final IncidentService incidentService;
+    private final ActivityAuditService activityAuditService;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
@@ -107,11 +114,49 @@ public class IncidentController {
         return ResponseEntity.ok(ApiResponse.success(response, "Incident updated successfully"));
     }
 
+    @PostMapping("/{id}/assign")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
+    public ResponseEntity<ApiResponse<IncidentResponse>> assignIncident(
+            @PathVariable Long id,
+            @Valid @RequestBody IncidentAssignmentRequest request,
+            @AuthenticationPrincipal User user) {
+        IncidentResponse response = incidentService.assignIncident(id, request.getAssignedTo(), actor(user));
+        return ResponseEntity.ok(ApiResponse.success(response, "Incident assigned"));
+    }
+
+    @PostMapping("/{id}/acknowledge")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'ANALYST')")
+    public ResponseEntity<ApiResponse<IncidentResponse>> acknowledgeIncident(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User user) {
+        IncidentResponse response = incidentService.acknowledgeIncident(id, actor(user));
+        return ResponseEntity.ok(ApiResponse.success(response, "Incident acknowledged"));
+    }
+
+    @PostMapping("/{id}/review")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'ANALYST')")
+    public ResponseEntity<ApiResponse<IncidentResponse>> reviewIncident(
+            @PathVariable Long id,
+            @RequestBody IncidentReviewRequest request,
+            @AuthenticationPrincipal User user) {
+        IncidentResponse response = incidentService.reviewIncident(id, request.getNotes(), actor(user));
+        return ResponseEntity.ok(ApiResponse.success(response, "Incident reviewed"));
+    }
+
+    @GetMapping("/{id}/timeline")
+    public ResponseEntity<ApiResponse<List<ActivityEventResponse>>> getIncidentTimeline(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(activityAuditService.timeline("INCIDENT", id)));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteIncident(@PathVariable Long id) {
         log.info("DELETE incident: {}", id);
         incidentService.deleteIncident(id);
         return ResponseEntity.ok(ApiResponse.success(null, "Incident deleted successfully"));
+    }
+
+    private String actor(User user) {
+        return user == null ? "system" : user.getUsername();
     }
 }

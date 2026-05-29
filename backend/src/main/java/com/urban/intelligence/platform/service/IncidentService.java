@@ -29,6 +29,7 @@ public class IncidentService {
     private final IncidentRepository incidentRepository;
     private final DistrictRepository districtRepository;
     private final RealTimeOperationsService realTimeOperationsService;
+    private final ActivityAuditService activityAuditService;
 
     public IncidentResponse createIncident(IncidentCreateRequest request) {
         log.info("Creating new incident of type: {}", request.getType());
@@ -48,6 +49,8 @@ public class IncidentService {
 
         Incident savedIncident = incidentRepository.save(incident);
         IncidentResponse response = mapToResponse(savedIncident);
+        activityAuditService.record("INCIDENT", savedIncident.getId(), "CREATED", "system",
+            "Incident created in " + district.getName());
         realTimeOperationsService.publishIncidentCreated(savedIncident, response);
         log.info("Incident created successfully with ID: {}", savedIncident.getId());
         return response;
@@ -96,9 +99,20 @@ public class IncidentService {
         if (request.getLatitude() != null) incident.setLatitude(request.getLatitude());
         if (request.getLongitude() != null) incident.setLongitude(request.getLongitude());
         if (request.getStatus() != null) incident.setStatus(Incident.IncidentStatus.valueOf(request.getStatus().toUpperCase()));
+        if (request.getAssignedTo() != null) incident.setAssignedTo(request.getAssignedTo().trim().isBlank() ? null : request.getAssignedTo().trim());
+        if (request.getAcknowledged() != null) {
+            incident.setAcknowledged(request.getAcknowledged());
+            incident.setAcknowledgedAt(request.getAcknowledged() ? LocalDateTime.now() : null);
+        }
+        if (request.getReviewed() != null) {
+            incident.setReviewed(request.getReviewed());
+            incident.setReviewedAt(request.getReviewed() ? LocalDateTime.now() : null);
+        }
+        if (request.getReviewNotes() != null) incident.setReviewNotes(request.getReviewNotes());
 
         Incident updatedIncident = incidentRepository.save(incident);
         IncidentResponse response = mapToResponse(updatedIncident);
+        activityAuditService.record("INCIDENT", updatedIncident.getId(), "UPDATED", "system", "Incident updated");
         realTimeOperationsService.publishIncidentUpdated(previous, updatedIncident, response);
         log.info("Incident updated successfully");
         return response;
@@ -112,8 +126,48 @@ public class IncidentService {
         }
 
         incidentRepository.deleteById(id);
+        activityAuditService.record("INCIDENT", id, "DELETED", "system", "Incident deleted");
         realTimeOperationsService.publishIncidentDeleted(id);
         log.info("Incident deleted successfully");
+    }
+
+    public IncidentResponse assignIncident(Long id, String assignedTo, String actor) {
+        Incident incident = incidentRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Incident not found with ID: " + id));
+        incident.setAssignedTo(assignedTo.trim());
+        if (incident.getStatus() == Incident.IncidentStatus.REPORTED || incident.getStatus() == Incident.IncidentStatus.OPEN) {
+            incident.setStatus(Incident.IncidentStatus.IN_PROGRESS);
+        }
+        Incident saved = incidentRepository.save(incident);
+        IncidentResponse response = mapToResponse(saved);
+        activityAuditService.record("INCIDENT", id, "ASSIGNED", actor, "Assigned to " + assignedTo.trim());
+        realTimeOperationsService.publishIncidentUpdated(Incident.builder().status(incident.getStatus()).severity(incident.getSeverity()).build(), saved, response);
+        return response;
+    }
+
+    public IncidentResponse acknowledgeIncident(Long id, String actor) {
+        Incident incident = incidentRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Incident not found with ID: " + id));
+        incident.setAcknowledged(true);
+        incident.setAcknowledgedAt(LocalDateTime.now());
+        Incident saved = incidentRepository.save(incident);
+        IncidentResponse response = mapToResponse(saved);
+        activityAuditService.record("INCIDENT", id, "ACKNOWLEDGED", actor, "Incident acknowledged");
+        realTimeOperationsService.publishIncidentUpdated(Incident.builder().status(incident.getStatus()).severity(incident.getSeverity()).build(), saved, response);
+        return response;
+    }
+
+    public IncidentResponse reviewIncident(Long id, String notes, String actor) {
+        Incident incident = incidentRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Incident not found with ID: " + id));
+        incident.setReviewed(true);
+        incident.setReviewedAt(LocalDateTime.now());
+        incident.setReviewNotes(notes);
+        Incident saved = incidentRepository.save(incident);
+        IncidentResponse response = mapToResponse(saved);
+        activityAuditService.record("INCIDENT", id, "REVIEWED", actor, notes == null || notes.isBlank() ? "Incident reviewed" : notes);
+        realTimeOperationsService.publishIncidentUpdated(Incident.builder().status(incident.getStatus()).severity(incident.getSeverity()).build(), saved, response);
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -173,6 +227,12 @@ public class IncidentService {
             .districtId(incident.getDistrict().getId())
             .districtName(incident.getDistrict().getName())
             .status(incident.getStatus().toString())
+            .assignedTo(incident.getAssignedTo())
+            .acknowledged(Boolean.TRUE.equals(incident.getAcknowledged()))
+            .acknowledgedAt(incident.getAcknowledgedAt())
+            .reviewed(Boolean.TRUE.equals(incident.getReviewed()))
+            .reviewedAt(incident.getReviewedAt())
+            .reviewNotes(incident.getReviewNotes())
             .createdAt(incident.getCreatedAt())
             .updatedAt(incident.getUpdatedAt())
             .build();

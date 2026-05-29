@@ -49,6 +49,19 @@ public class Recommendation {
     @Column(name = "operational_confidence")
     private Double operationalConfidence;
 
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private RecommendationStatus status = RecommendationStatus.PENDING;
+
+    @Column(length = 120)
+    private String reviewedBy;
+
+    private LocalDateTime reviewedAt;
+
+    @Column(columnDefinition = "TEXT")
+    private String reviewNotes;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "district_id", nullable = false)
     private District district;
@@ -72,5 +85,9 @@ public class Recommendation {
 
     public enum Priority {
         LOW, MEDIUM, HIGH, CRITICAL
+    }
+
+    public enum RecommendationStatus {
+        PENDING, APPROVED, REJECTED, IMPLEMENTED
     }
 }

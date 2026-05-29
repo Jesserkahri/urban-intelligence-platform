@@ -1,9 +1,13 @@
 package com.urban.intelligence.platform.api.controller;
 
+import com.urban.intelligence.platform.auth.domain.User;
+import com.urban.intelligence.platform.dto.ActivityEventResponse;
 import com.urban.intelligence.platform.dto.ApiResponse;
 import com.urban.intelligence.platform.dto.RecommendationCreateRequest;
+import com.urban.intelligence.platform.dto.RecommendationDecisionRequest;
 import com.urban.intelligence.platform.dto.RecommendationResponse;
 import com.urban.intelligence.platform.dto.RecommendationUpdateRequest;
+import com.urban.intelligence.platform.service.ActivityAuditService;
 import com.urban.intelligence.platform.service.RecommendationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +19,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -29,6 +34,7 @@ import java.util.List;
 public class RecommendationController {
 
     private final RecommendationService recommendationService;
+    private final ActivityAuditService activityAuditService;
 
     /**
      * Create a new recommendation
@@ -118,6 +124,31 @@ public class RecommendationController {
         return ResponseEntity.ok(ApiResponse.success(response, "Recommendation updated successfully"));
     }
 
+    @PostMapping("/{id}/approve")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'ANALYST')")
+    public ResponseEntity<ApiResponse<RecommendationResponse>> approveRecommendation(
+            @PathVariable Long id,
+            @RequestBody RecommendationDecisionRequest request,
+            @AuthenticationPrincipal User user) {
+        RecommendationResponse response = recommendationService.approveRecommendation(id, request.getNotes(), actor(user));
+        return ResponseEntity.ok(ApiResponse.success(response, "Recommendation approved"));
+    }
+
+    @PostMapping("/{id}/reject")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'ANALYST')")
+    public ResponseEntity<ApiResponse<RecommendationResponse>> rejectRecommendation(
+            @PathVariable Long id,
+            @RequestBody RecommendationDecisionRequest request,
+            @AuthenticationPrincipal User user) {
+        RecommendationResponse response = recommendationService.rejectRecommendation(id, request.getNotes(), actor(user));
+        return ResponseEntity.ok(ApiResponse.success(response, "Recommendation rejected"));
+    }
+
+    @GetMapping("/{id}/timeline")
+    public ResponseEntity<ApiResponse<List<ActivityEventResponse>>> getRecommendationTimeline(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(activityAuditService.timeline("RECOMMENDATION", id)));
+    }
+
     /**
      * Delete recommendation
      * DELETE /api/recommendations/{id}
@@ -128,5 +159,9 @@ public class RecommendationController {
         log.info("DELETE /api/recommendations/{} - Deleting recommendation", id);
         recommendationService.deleteRecommendation(id);
         return ResponseEntity.noContent().build();
+    }
+
+    private String actor(User user) {
+        return user == null ? "system" : user.getUsername();
     }
 }

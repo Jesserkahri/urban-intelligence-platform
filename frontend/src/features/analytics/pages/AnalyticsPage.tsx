@@ -120,9 +120,9 @@ export const AnalyticsPage: React.FC = () => {
                   cy="50%"
                   outerRadius={110}
                   dataKey="value"
-                  label={(entry) => `${entry.name}: ${entry.value}`}
+                  label={({ name, value }) => `${name}: ${value}`}
                 >
-                  {categoryData.map((entry, index) => (
+                  {categoryData.map((_entry, index) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={CHART_COLORS[index % CHART_COLORS.length]}

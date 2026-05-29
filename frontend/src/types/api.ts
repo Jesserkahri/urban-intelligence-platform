@@ -61,8 +61,8 @@ export interface District {
   population: number;
   sustainabilityScore: number;
   operationalRiskScore: number;
-  createdAt: string;
-  updatedAt: string;
+  incidentCount?: number;
+  recommendationCount?: number;
 }
 
 export interface DistrictResponse {
@@ -74,12 +74,12 @@ export interface DistrictResponse {
 }
 
 export interface DistrictMetricsResponse {
-  districtId: number;
-  districtName: string;
-  averageRiskScore: number;
-  incidentCount: number;
-  unresolvedIncidents: number;
+  id: number;
+  name: string;
+  healthScore: number;
+  recentIncidentsCount: number;
   sustainabilityScore: number;
+  operationalRiskScore: number;
 }
 
 // Incident types
@@ -173,7 +173,8 @@ export interface HotspotResponse {
   districtName: string;
   hotspotScore: number;
   incidentCount: number;
-  unresolvedIncidentCount: number;
+  unresolvedIncidentCount?: number;
+  unresolvedIncidents?: number;
   unresolvedRatio: number;
   averageSeverity: string;
   riskIntensity?: string;
@@ -244,7 +245,7 @@ export interface DashboardInsightResponse {
 }
 
 // Recommendation types
-export type RecommendationPriority = "LOW" | "MEDIUM" | "HIGH";
+export type RecommendationPriority = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 export type RecommendationStatus = "PENDING" | "IMPLEMENTED" | "REJECTED";
 
 export interface Recommendation {
@@ -252,6 +253,9 @@ export interface Recommendation {
   type: string;
   priority: RecommendationPriority;
   message: string;
+  predictedImpact?: number;
+  interventionEffectiveness?: number;
+  operationalConfidence?: number;
   districtId: number;
   districtName?: string;
   createdAt: string;

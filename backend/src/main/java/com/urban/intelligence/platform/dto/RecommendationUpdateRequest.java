@@ -11,4 +11,6 @@ public class RecommendationUpdateRequest {
     private String type;
     private String priority;
     private String message;
+    private String status;
+    private String reviewNotes;
 }

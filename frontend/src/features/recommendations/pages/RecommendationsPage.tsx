@@ -1,13 +1,11 @@
 import React, { useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/Card";
+import { Card, CardContent } from "@components/ui/Card";
 import { Badge } from "@components/ui/Badge";
 import { Button } from "@components/ui/Button";
 import { Input } from "@components/ui/Input";
 import { useRecommendations } from "@hooks/useRecommendations";
 import { PRIORITY_COLORS } from "@lib/utils";
-import { Recommendation, RecommendationPriority } from "@appTypes/api";
-
-const priorityOptions: RecommendationPriority[] = ["LOW", "MEDIUM", "HIGH"];
+import { Recommendation } from "@appTypes/api";
 
 export const RecommendationsPage: React.FC = () => {
   const [search, setSearch] = useState("");
@@ -23,7 +21,7 @@ export const RecommendationsPage: React.FC = () => {
 
     return (data?.content ?? []).filter((item) => {
       return [item.type, item.message, item.districtName, item.priority]
-        .filter(Boolean)
+        .filter((field): field is string => typeof field === "string")
         .some((field) => field.toLowerCase().includes(value));
     });
   }, [data?.content, search]);
