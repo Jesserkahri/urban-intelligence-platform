@@ -4,9 +4,19 @@ import { Badge } from "@components/ui/Badge";
 import { Button } from "@components/ui/Button";
 import { Input } from "@components/ui/Input";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/Card";
-import { Dialog } from "@components/ui/Dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@components/ui/Dialog";
 import { DataTable, DataTableColumn } from "@components/common/DataTable";
 import { FormField } from "@components/common/FormField";
+import { ActivityTimeline } from "@components/common/ActivityTimeline";
+import {
+  AssignIncidentDialog,
+  ReviewIncidentDialog,
+} from "@components/features/WorkflowDialogs";
 import {
   Incident,
   IncidentCreateRequest,
@@ -21,6 +31,12 @@ import {
   useRecentIncidents,
   useUpdateIncident,
 } from "@hooks/useIncidents";
+import {
+  useAssignIncident,
+  useAcknowledgeIncident,
+  useReviewIncident,
+  useActivityTimeline,
+} from "@hooks/useWorkflow";
 import { useDistricts } from "@hooks/useDistricts";
 import { formatDate, SEVERITY_COLORS, STATUS_COLORS } from "@lib/utils";
 
@@ -68,8 +84,13 @@ export const IncidentsPage: React.FC = () => {
   const [selectedIncidentId, setSelectedIncidentId] = useState<number | null>(
     null,
   );
+  const [selectedIncidentForWorkflow, setSelectedIncidentForWorkflow] =
+    useState<Incident | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 
   const incidentQueryParams: IncidentQueryParams = {
     page,
@@ -99,6 +120,14 @@ export const IncidentsPage: React.FC = () => {
   const createMutation = useCreateIncident();
   const updateMutation = useUpdateIncident();
   const deleteMutation = useDeleteIncident();
+  const assignMutation = useAssignIncident();
+  const acknowledgeMutation = useAcknowledgeIncident();
+  const reviewMutation = useReviewIncident();
+
+  const { data: timeline, isLoading: timelineLoading } = useActivityTimeline(
+    "INCIDENT",
+    selectedIncidentForWorkflow?.id ?? 0,
+  );
 
   const incidentRows = incidentPage?.content ?? [];
   const districtOptions = districtList?.content ?? [];
@@ -237,6 +266,36 @@ export const IncidentsPage: React.FC = () => {
 
   const actionButtons = (incident: Incident) => (
     <div className="flex flex-wrap justify-end gap-2">
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => {
+          setSelectedIncidentForWorkflow(incident);
+          setDetailDialogOpen(true);
+        }}
+      >
+        Details
+      </Button>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => {
+          setSelectedIncidentForWorkflow(incident);
+          setAssignDialogOpen(true);
+        }}
+      >
+        Assign
+      </Button>
+      <Button
+        size="sm"
+        variant="secondary"
+        onClick={() => {
+          setSelectedIncidentForWorkflow(incident);
+          setReviewDialogOpen(true);
+        }}
+      >
+        Review
+      </Button>
       <Button
         size="sm"
         variant="outline"
@@ -595,6 +654,96 @@ export const IncidentsPage: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Incident Detail Modal */}
+      <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{selectedIncidentForWorkflow?.type}</DialogTitle>
+          </DialogHeader>
+          {selectedIncidentForWorkflow && (
+            <div className="space-y-6">
+              <div>
+                <h4 className="font-semibold mb-2">Details</h4>
+                <p className="text-sm text-muted-foreground">
+                  {selectedIncidentForWorkflow.description}
+                </p>
+                <div className="flex gap-4 mt-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Severity</p>
+                    <Badge
+                      className={
+                        SEVERITY_COLORS[selectedIncidentForWorkflow.severity]
+                      }
+                    >
+                      {selectedIncidentForWorkflow.severity}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Status</p>
+                    <Badge
+                      className={
+                        STATUS_COLORS[selectedIncidentForWorkflow.status]
+                      }
+                    >
+                      {selectedIncidentForWorkflow.status}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-semibold mb-3">Activity Timeline</h4>
+                <ActivityTimeline
+                  activities={timeline ?? []}
+                  isLoading={timelineLoading}
+                />
+              </div>
+
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setDetailDialogOpen(false)}
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Incident Dialog */}
+      <AssignIncidentDialog
+        open={assignDialogOpen}
+        onOpenChange={setAssignDialogOpen}
+        onAssign={(assignedTo, notes) => {
+          if (selectedIncidentForWorkflow) {
+            assignMutation.mutate({
+              incidentId: selectedIncidentForWorkflow.id,
+              request: { assignedTo, notes },
+            });
+            setAssignDialogOpen(false);
+          }
+        }}
+        isLoading={assignMutation.isPending}
+      />
+
+      {/* Review Incident Dialog */}
+      <ReviewIncidentDialog
+        open={reviewDialogOpen}
+        onOpenChange={setReviewDialogOpen}
+        onReview={(status, notes) => {
+          if (selectedIncidentForWorkflow) {
+            reviewMutation.mutate({
+              incidentId: selectedIncidentForWorkflow.id,
+              request: { reviewStatus: status, reviewNotes: notes },
+            });
+            setReviewDialogOpen(false);
+          }
+        }}
+        isLoading={reviewMutation.isPending}
+      />
     </div>
   );
 };

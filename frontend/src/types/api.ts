@@ -246,13 +246,19 @@ export interface DashboardInsightResponse {
 
 // Recommendation types
 export type RecommendationPriority = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
-export type RecommendationStatus = "PENDING" | "IMPLEMENTED" | "REJECTED";
+export type RecommendationStatus =
+  | "PENDING"
+  | "IMPLEMENTED"
+  | "REJECTED"
+  | "APPROVED"
+  | "DECLINED";
 
 export interface Recommendation {
   id: number;
   type: string;
   priority: RecommendationPriority;
   message: string;
+  status?: RecommendationStatus;
   predictedImpact?: number;
   interventionEffectiveness?: number;
   operationalConfidence?: number;
@@ -260,6 +266,33 @@ export interface Recommendation {
   districtName?: string;
   createdAt: string;
   updatedAt?: string;
+}
+
+// Workflow & Operational types
+export interface ActivityEvent {
+  id: number;
+  entityType: string;
+  entityId: number;
+  action: string;
+  performer: string;
+  details: string;
+  timestamp: string;
+}
+
+export interface IncidentAssignmentRequest {
+  assignedTo: string;
+  notes?: string;
+}
+
+export interface IncidentReviewRequest {
+  reviewStatus: "ACKNOWLEDGED" | "REVIEWED" | "REJECTED";
+  reviewNotes: string;
+}
+
+export interface RecommendationDecisionRequest {
+  decision: "APPROVED" | "REJECTED";
+  reason: string;
+  implementationNotes?: string;
 }
 
 export interface RecommendationCreateRequest {
