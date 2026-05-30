@@ -51,8 +51,8 @@ private RefreshTokenSessionRepository refreshTokenSessionRepository;  // ← ajo
     @BeforeEach
     void setUp() {
         districtRepository.deleteAll();
+                refreshTokenSessionRepository.deleteAll();
         userRepository.deleteAll();
-        refreshTokenSessionRepository.deleteAll();
         User admin = User.builder()
             .username("admin").email("admin@test.com")
             .password("$2a$10$dummy")
