@@ -17,7 +17,7 @@ import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
-
+import com.urban.intelligence.platform.auth.repository.RefreshTokenSessionRepository;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -26,7 +26,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * Error responses return ApiError, not ApiResponse.
  */
 class AuthIntegrationTest extends BaseIntegrationTest {
-
+@Autowired
+private RefreshTokenSessionRepository refreshTokenSessionRepository;  // ← ajoute
     @Autowired
     private TestRestTemplate restTemplate;
 
@@ -41,10 +42,11 @@ class AuthIntegrationTest extends BaseIntegrationTest {
     private static final ParameterizedTypeReference<ApiResponse<Void>> VOID_RESPONSE =
         new ParameterizedTypeReference<>() {};
 
-    @BeforeEach
-    void setUp() {
-        userRepository.deleteAll();
-    }
+@BeforeEach
+void setUp() {
+    refreshTokenSessionRepository.deleteAll();  // ← ajoute cette ligne
+    userRepository.deleteAll();
+}
 
     @Test
     @DisplayName("Register new user returns ApiResponse with tokens")
