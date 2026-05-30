@@ -20,7 +20,7 @@ export const DashboardPage: React.FC = () => {
   const {
     connected,
     latestEvent,
-    snapshotGas Leak: streamedSnapshot,
+    snapshot: streamedSnapshot,
   } = useLiveOperations();
   const { data: polledSnapshot } = useLiveDashboardSnapshot();
 
