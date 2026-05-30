@@ -3,6 +3,7 @@ package com.urban.intelligence.platform.integration;
 import com.urban.intelligence.platform.auth.domain.Role;
 import com.urban.intelligence.platform.auth.domain.User;
 import com.urban.intelligence.platform.auth.dto.RefreshTokenRequest;
+import com.urban.intelligence.platform.auth.repository.RefreshTokenSessionRepository;
 import com.urban.intelligence.platform.auth.repository.UserRepository;
 import com.urban.intelligence.platform.auth.security.JwtTokenProvider;
 import com.urban.intelligence.platform.dto.ApiResponse;
@@ -34,7 +35,8 @@ class DistrictIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
     private UserRepository userRepository;
-
+    @Autowired
+private RefreshTokenSessionRepository refreshTokenSessionRepository;  // ← ajout
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
@@ -50,7 +52,7 @@ class DistrictIntegrationTest extends BaseIntegrationTest {
     void setUp() {
         districtRepository.deleteAll();
         userRepository.deleteAll();
-
+        refreshTokenSessionRepository.deleteAll();
         User admin = User.builder()
             .username("admin").email("admin@test.com")
             .password("$2a$10$dummy")
