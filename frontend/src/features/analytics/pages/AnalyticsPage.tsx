@@ -63,13 +63,6 @@ export const AnalyticsPage: React.FC = () => {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Analytics</h1>
-        <p className="text-muted-foreground mt-2">
-          Urban operations and incident analytics.
-        </p>
-      </div>
-
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
@@ -228,8 +221,8 @@ export const AnalyticsPage: React.FC = () => {
               ))}
               {(anomalies ?? []).length === 0 && (
                 <p className="text-sm text-muted-foreground">
-                  No districts currently exceed the 2 standard deviation
-                  anomaly threshold.
+                  No districts currently exceed the 2 standard deviation anomaly
+                  threshold.
                 </p>
               )}
             </div>

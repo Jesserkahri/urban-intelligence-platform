@@ -451,7 +451,6 @@ public class OperationalInsightService {
 
     private boolean isUnresolved(Incident incident) {
         return incident.getStatus() == Incident.IncidentStatus.OPEN
-            || incident.getStatus() == Incident.IncidentStatus.REPORTED
             || incident.getStatus() == Incident.IncidentStatus.IN_PROGRESS;
     }
 

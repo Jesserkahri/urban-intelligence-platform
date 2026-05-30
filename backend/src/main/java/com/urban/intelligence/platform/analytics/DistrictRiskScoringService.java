@@ -34,7 +34,7 @@ public class DistrictRiskScoringService {
     private final IncidentRepository incidentRepository;
     private final RecommendationRepository recommendationRepository;
     private final AnalyticsEventRepository analyticsEventRepository;
-    private static final double MAX_INCIDENTS_BASELINE = 100.0;
+    private static final double MAX_INCIDENTS_BASELINE = 15.0;
     private static final Map<Incident.SeverityLevel, Integer> SEVERITY_WEIGHTS = Map.of(
         Incident.SeverityLevel.LOW, 1,
         Incident.SeverityLevel.MEDIUM, 2,
@@ -175,19 +175,29 @@ public class DistrictRiskScoringService {
     }
 
     private DistrictRiskAnalysisResponse calculateRiskScore(District district, List<Incident> incidents) {
-        double incidentFactor = Math.min((incidents.size() / MAX_INCIDENTS_BASELINE) * 100, 100.0);
+        // Incident volume: how many incidents relative to baseline (max 100)
+        double incidentVolume = Math.min((incidents.size() / MAX_INCIDENTS_BASELINE) * 100, 100.0);
         long unresolved = incidents.stream().filter(this::isUnresolved).count();
-        double unresolvedFactor = incidents.isEmpty() ? 0.0 : (unresolved / (double) incidents.size()) * 100;
-        double severityFactor = incidents.isEmpty() ? 0.0
-            : (incidents.stream()
-                .mapToInt(i -> SEVERITY_WEIGHTS.getOrDefault(i.getSeverity(), 1))
-                .average()
-                .orElse(1.0) / 7.0) * 100;
+
+        // Severity-weighted volume: total severity weight across all incidents (max 100)
+        double severityWeightedVolume = incidents.isEmpty() ? 0.0
+            : Math.min(
+                incidents.stream()
+                    .mapToInt(i -> SEVERITY_WEIGHTS.getOrDefault(i.getSeverity(), 1))
+                    .sum() / (MAX_INCIDENTS_BASELINE * 4.0) * 100,
+                100.0
+            );
+
+        // Unresolved: ratio of unresolved incidents, weighted by incident volume
+        double unresolvedRatio = incidents.isEmpty() ? 0.0 : unresolved / (double) incidents.size();
+        double unresolvedFactor = unresolvedRatio * incidentVolume;
+
+        // Sustainability: lower score = higher risk (inverse)
         double sustainabilityFactor = 100 - district.getSustainabilityScore();
 
-        double riskScore = (incidentFactor * 0.30)
-            + (unresolvedFactor * 0.25)
-            + (severityFactor * 0.25)
+        double riskScore = (incidentVolume * 0.20)
+            + (severityWeightedVolume * 0.30)
+            + (unresolvedFactor * 0.30)
             + (sustainabilityFactor * 0.20);
 
         return DistrictRiskAnalysisResponse.builder()
@@ -195,9 +205,9 @@ public class DistrictRiskScoringService {
             .districtName(district.getName())
             .riskScore(round(Math.min(riskScore, 100.0)))
             .riskLevel(classifyRiskLevel(riskScore))
-            .incidentDensityFactor(round(incidentFactor))
+            .incidentDensityFactor(round(incidentVolume))
             .unresolvedRatioFactor(round(unresolvedFactor))
-            .averageSeverityFactor(round(severityFactor))
+            .averageSeverityFactor(round(severityWeightedVolume))
             .sustainabilityImpactFactor(round(sustainabilityFactor))
             .totalIncidents(incidents.size())
             .unresolvedIncidents((int) unresolved)
@@ -208,7 +218,6 @@ public class DistrictRiskScoringService {
 
     private boolean isUnresolved(Incident incident) {
         return incident.getStatus() == Incident.IncidentStatus.OPEN
-            || incident.getStatus() == Incident.IncidentStatus.REPORTED
             || incident.getStatus() == Incident.IncidentStatus.IN_PROGRESS;
     }
 

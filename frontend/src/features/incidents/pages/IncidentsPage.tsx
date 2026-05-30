@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@components/ui/Dialog";
+import { DropdownMenu } from "@components/ui/DropdownMenu";
 import { DataTable, DataTableColumn } from "@components/common/DataTable";
 import { FormField } from "@components/common/FormField";
 import { ActivityTimeline } from "@components/common/ActivityTimeline";
@@ -91,6 +92,7 @@ export const IncidentsPage: React.FC = () => {
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [recentDialogOpen, setRecentDialogOpen] = useState(false);
 
   const incidentQueryParams: IncidentQueryParams = {
     page,
@@ -268,7 +270,7 @@ export const IncidentsPage: React.FC = () => {
   };
 
   const actionButtons = (incident: Incident) => (
-    <div className="flex flex-wrap justify-end gap-2">
+    <div className="flex items-center gap-1">
       <Button
         size="sm"
         variant="outline"
@@ -279,69 +281,54 @@ export const IncidentsPage: React.FC = () => {
       >
         Details
       </Button>
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() => {
-          setSelectedIncidentForWorkflow(incident);
-          setAssignDialogOpen(true);
-        }}
-      >
-        Assign
-      </Button>
-      <Button
-        size="sm"
-        variant="secondary"
-        onClick={() => {
-          setSelectedIncidentForWorkflow(incident);
-          setReviewDialogOpen(true);
-        }}
-      >
-        Review
-      </Button>
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() => openEditDialog(incident)}
-      >
-        Edit
-      </Button>
-      <Button
-        size="sm"
-        variant="secondary"
-        onClick={() => handleStatusToggle(incident)}
-        disabled={
-          incident.status === "RESOLVED" || incident.status === "CLOSED"
-        }
-      >
-        {incident.status === "REPORTED" || incident.status === "OPEN"
-          ? "Start"
-          : "Advance"}
-      </Button>
-      <Button
-        size="sm"
-        variant="destructive"
-        onClick={() => handleDelete(incident.id)}
-        disabled={deleteMutation.isPending}
-      >
-        Delete
-      </Button>
+      <DropdownMenu
+        items={[
+          {
+            label:
+              incident.status === "REPORTED" || incident.status === "OPEN"
+                ? "Start"
+                : "Advance",
+            onClick: () => handleStatusToggle(incident),
+            disabled:
+              incident.status === "RESOLVED" || incident.status === "CLOSED",
+          },
+          {
+            label: "Assign",
+            onClick: () => {
+              setSelectedIncidentForWorkflow(incident);
+              setAssignDialogOpen(true);
+            },
+          },
+          {
+            label: "Review",
+            onClick: () => {
+              setSelectedIncidentForWorkflow(incident);
+              setReviewDialogOpen(true);
+            },
+          },
+          {
+            label: "Edit",
+            onClick: () => openEditDialog(incident),
+          },
+          {
+            label: "Delete",
+            onClick: () => handleDelete(incident.id),
+            variant: "destructive",
+            disabled: deleteMutation.isPending,
+          },
+        ]}
+      />
     </div>
   );
-
-  const incidentCount = incidentPage?.totalElements ?? 0;
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Incidents</h1>
-          <p className="text-muted-foreground mt-2">
-            View and manage all incidents across districts.
-          </p>
-        </div>
+      <div className="flex items-center justify-end gap-2">
+        <Button variant="outline" onClick={() => setRecentDialogOpen(true)}>
+          Recent incidents
+        </Button>
         <Button onClick={openCreateDialog}>
           <Plus className="mr-2 h-4 w-4" />
           Create incident
@@ -563,12 +550,7 @@ export const IncidentsPage: React.FC = () => {
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between w-full">
-            <div>
-              <CardTitle>Incident ledger</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                {incidentCount} incidents matched your filters.
-              </p>
-            </div>
+            <CardTitle>Incident ledger</CardTitle>
             <div className="grid w-full max-w-4xl gap-3 sm:grid-cols-4">
               <Input
                 placeholder="Search incidents"
@@ -667,13 +649,14 @@ export const IncidentsPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent incidents</CardTitle>
-        </CardHeader>
-        <CardContent>
+      {/* Recent Incidents Dialog */}
+      <Dialog open={recentDialogOpen} onOpenChange={setRecentDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Recent incidents</DialogTitle>
+          </DialogHeader>
           {isRecentLoading ? (
-            <div className="space-y-3">
+            <div className="space-y-3 p-4">
               {[...Array(4)].map((_, index) => (
                 <div
                   key={index}
@@ -682,8 +665,8 @@ export const IncidentsPage: React.FC = () => {
               ))}
             </div>
           ) : (
-            <ul className="space-y-3">
-              {recentIncidents?.slice(0, 5).map((incident) => (
+            <ul className="space-y-3 p-4">
+              {recentIncidents?.slice(0, 10).map((incident) => (
                 <li
                   key={incident.id}
                   className="rounded-lg border border-border p-4"
@@ -705,8 +688,8 @@ export const IncidentsPage: React.FC = () => {
               ))}
             </ul>
           )}
-        </CardContent>
-      </Card>
+        </DialogContent>
+      </Dialog>
 
       {/* Incident Detail Modal */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>

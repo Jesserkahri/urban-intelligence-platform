@@ -215,16 +215,6 @@ export const SpatialPage: React.FC = () => {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">
-          Spatial Intelligence
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Geographic operational analysis for incidents, hotspots and district
-          risk.
-        </p>
-      </div>
-
       <div className="grid gap-4 xl:grid-cols-[2fr_1fr]">
         <div className="space-y-4">
           <div className="rounded-lg border border-border bg-card p-6">

@@ -2,7 +2,6 @@ import React from "react";
 import { AlertTriangle, TrendingUp, Zap, MapPin } from "lucide-react";
 import { KPICard } from "@components/common/KPICard";
 import { AnalyticsChart } from "@components/common/AnalyticsChart";
-import { RecentIncidents } from "@components/common/RecentIncidents";
 import {
   useDashboardInsights,
   useDailyTrends,
@@ -26,12 +25,14 @@ export const DashboardPage: React.FC = () => {
     size: 20,
     sort: "name,asc",
   });
-  const { data: recentIncidents, isLoading: isRecentLoading } =
-    useRecentIncidents();
+  const { data: recentIncidents } = useRecentIncidents();
   const { data: dashboardInsights, isLoading: isDashboardLoading } =
     useDashboardInsights();
-  const { connected, latestEvent, snapshot: streamedSnapshot } =
-    useLiveOperations();
+  const {
+    connected,
+    latestEvent,
+    snapshot: streamedSnapshot,
+  } = useLiveOperations();
   const { data: polledSnapshot } = useLiveDashboardSnapshot();
 
   const liveSnapshot = streamedSnapshot ?? polledSnapshot;
@@ -57,13 +58,6 @@ export const DashboardPage: React.FC = () => {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground mt-2">
-          Urban intelligence and operational metrics.
-        </p>
-      </div>
-
       <div className="rounded-lg border border-border bg-card p-4">
         <div className="grid gap-4 md:grid-cols-[1fr_repeat(3,auto)] md:items-center">
           <div>
@@ -103,7 +97,9 @@ export const DashboardPage: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <KPICard
           label="Active Incidents"
-          value={liveSnapshot?.activeIncidents ?? recentIncidents?.length ?? "--"}
+          value={
+            liveSnapshot?.activeIncidents ?? recentIncidents?.length ?? "--"
+          }
           change={dailyTrend ? dailyTrend.growthPercentage : undefined}
           trend={(dailyTrend?.growthPercentage ?? 0) >= 0 ? "up" : "down"}
           icon={<AlertTriangle className="h-4 w-4" />}
@@ -142,7 +138,9 @@ export const DashboardPage: React.FC = () => {
         />
         <KPICard
           label="Active Alerts"
-          value={liveSnapshot?.alerts24h ?? dashboardInsights?.alerts?.length ?? "--"}
+          value={
+            liveSnapshot?.alerts24h ?? dashboardInsights?.alerts?.length ?? "--"
+          }
           unit="items"
           icon={<Zap className="h-4 w-4" />}
         />
@@ -294,48 +292,6 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-[1.5fr_1fr] gap-6">
-        <div className="rounded-lg border border-border bg-card p-6">
-          <div className="flex items-center justify-between gap-4 mb-4">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">
-                Recommendations
-              </p>
-              <h2 className="text-xl font-semibold">Priority actions</h2>
-            </div>
-          </div>
-          {isDashboardLoading ? (
-            <div className="space-y-3">
-              {[...Array(3)].map((_, index) => (
-                <div
-                  key={index}
-                  className="h-12 rounded-md bg-muted animate-pulse"
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {dashboardInsights?.recommendations?.map((recommendation) => (
-                <div
-                  key={recommendation.title}
-                  className="rounded-lg border border-border p-4"
-                >
-                  <p className="font-semibold">{recommendation.title}</p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    {recommendation.rationale}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <RecentIncidents
-          incidents={recentIncidents ?? []}
-          isLoading={isRecentLoading}
-        />
       </div>
     </div>
   );

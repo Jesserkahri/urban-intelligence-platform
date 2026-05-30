@@ -11,13 +11,6 @@ export const DistrictsPage: React.FC = () => {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Districts</h1>
-        <p className="text-muted-foreground mt-2">
-          Manage urban districts and their metrics.
-        </p>
-      </div>
-
       {error ? (
         <div className="rounded-lg border border-destructive bg-destructive/10 p-6 text-sm text-destructive">
           Unable to load district data. Please check your connection.
@@ -68,9 +61,7 @@ export const DistrictsPage: React.FC = () => {
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">
-                          Incidents
-                        </span>
+                        <span className="text-muted-foreground">Incidents</span>
                         <span className="font-medium">
                           {district.incidentCount ?? 0}
                         </span>

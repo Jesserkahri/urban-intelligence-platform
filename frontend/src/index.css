@@ -74,3 +74,25 @@ body {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
 }
+
+/* Leaflet map z-index fix — prevent map layers from overflowing above navbar */
+.leaflet-container {
+  z-index: 0 !important;
+}
+
+.leaflet-pane {
+  z-index: 1 !important;
+}
+
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 2 !important;
+}
+
+/* Ensure map containers properly clip their content */
+.map-wrapper {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 0.75rem;
+}

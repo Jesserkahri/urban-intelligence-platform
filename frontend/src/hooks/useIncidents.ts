@@ -48,6 +48,7 @@ export const useCreateIncident = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["incidents"] });
       queryClient.invalidateQueries({ queryKey: ["incidents", "recent"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
     },
   });
 };
@@ -88,6 +89,7 @@ export const useUpdateIncident = () => {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["incidents"] });
       queryClient.invalidateQueries({ queryKey: ["incidents", "recent"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
     },
   });
 };

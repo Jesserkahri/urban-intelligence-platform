@@ -77,13 +77,6 @@ export const RecommendationsPage: React.FC = () => {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Recommendations</h1>
-        <p className="text-muted-foreground mt-2">
-          Operational recommendations from the analytics engine.
-        </p>
-      </div>
-
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <Input
           placeholder="Search recommendations"
@@ -115,7 +108,10 @@ export const RecommendationsPage: React.FC = () => {
                 </Card>
               ))
             : filteredRecommendations.map((recommendation: Recommendation) => (
-                <Card key={recommendation.id} className="hover:border-primary/50">
+                <Card
+                  key={recommendation.id}
+                  className="hover:border-primary/50"
+                >
                   <CardContent className="pt-6">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                       <div className="flex-1">
@@ -243,9 +239,7 @@ export const RecommendationsPage: React.FC = () => {
                           ?.evidence ?? {},
                       ).map(([key, value]) => (
                         <div key={key} className="rounded-md bg-muted p-3">
-                          <p className="text-xs text-muted-foreground">
-                            {key}
-                          </p>
+                          <p className="text-xs text-muted-foreground">{key}</p>
                           <p className="font-semibold">{String(value)}</p>
                         </div>
                       ))}
