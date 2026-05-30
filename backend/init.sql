@@ -27,6 +27,14 @@ CREATE TABLE IF NOT EXISTS incidents (
     FOREIGN KEY (district_id) REFERENCES districts(id) ON DELETE CASCADE
 );
 
+-- Hibernate auto-generates a CHECK constraint for the status enum column.
+-- If migrating from a previous schema that used 'REPORTED' instead of 'OPEN',
+-- drop the old constraint and recreate it with the correct values.
+-- Run this ONLY if the constraint exists with old values:
+--   ALTER TABLE incidents DROP CONSTRAINT IF EXISTS incidents_status_check;
+--   ALTER TABLE incidents ADD CONSTRAINT incidents_status_check
+--     CHECK (status IN ('OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'));
+
 -- Create recommendations table
 CREATE TABLE IF NOT EXISTS recommendations (
     id BIGSERIAL PRIMARY KEY,
@@ -50,16 +58,58 @@ CREATE TABLE IF NOT EXISTS analytics_events (
     metadata TEXT
 );
 
+-- Create sustainability_metrics table (Phase 4)
+CREATE TABLE IF NOT EXISTS sustainability_metrics (
+    id BIGSERIAL PRIMARY KEY,
+    district_id BIGINT NOT NULL,
+    metric_type VARCHAR(100) NOT NULL,
+    value DOUBLE PRECISION NOT NULL,
+    unit VARCHAR(50) NOT NULL,
+    threshold DOUBLE PRECISION NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    source TEXT,
+    timestamp TIMESTAMP NOT NULL,
+    FOREIGN KEY (district_id) REFERENCES districts(id) ON DELETE CASCADE
+);
+
+-- Create sustainability_scores table (Phase 4)
+CREATE TABLE IF NOT EXISTS sustainability_scores (
+    id BIGSERIAL PRIMARY KEY,
+    district_id BIGINT NOT NULL,
+    overall_score DOUBLE PRECISION NOT NULL,
+    environmental_score DOUBLE PRECISION NOT NULL,
+    mobility_score DOUBLE PRECISION NOT NULL,
+    energy_score DOUBLE PRECISION NOT NULL,
+    waste_score DOUBLE PRECISION NOT NULL,
+    rating VARCHAR(1) NOT NULL,
+    trend VARCHAR(20) NOT NULL,
+    trend_percentage DOUBLE PRECISION NOT NULL,
+    calculated_at TIMESTAMP NOT NULL,
+    previous_calculation TIMESTAMP NOT NULL,
+    FOREIGN KEY (district_id) REFERENCES districts(id) ON DELETE CASCADE
+);
+
+-- Hibernate auto-generates CHECK constraints for sustainability enums too.
+-- If needed, run:
+--   ALTER TABLE sustainability_metrics DROP CONSTRAINT IF EXISTS sustainability_metrics_status_check;
+--   ALTER TABLE sustainability_metrics ADD CONSTRAINT sustainability_metrics_status_check
+--     CHECK (status IN ('GOOD', 'MODERATE', 'POOR', 'CRITICAL'));
+
 -- Create indexes
-CREATE INDEX idx_incident_district ON incidents(district_id);
-CREATE INDEX idx_incident_status ON incidents(status);
-CREATE INDEX idx_incident_created_at ON incidents(created_at);
-CREATE INDEX idx_recommendation_district ON recommendations(district_id);
-CREATE INDEX idx_recommendation_priority ON recommendations(priority);
-CREATE INDEX idx_recommendation_created_at ON recommendations(created_at);
-CREATE INDEX idx_analytics_category ON analytics_events(category);
-CREATE INDEX idx_analytics_source ON analytics_events(source);
-CREATE INDEX idx_analytics_timestamp ON analytics_events(timestamp);
+CREATE INDEX IF NOT EXISTS idx_incident_district ON incidents(district_id);
+CREATE INDEX IF NOT EXISTS idx_incident_status ON incidents(status);
+CREATE INDEX IF NOT EXISTS idx_incident_created_at ON incidents(created_at);
+CREATE INDEX IF NOT EXISTS idx_recommendation_district ON recommendations(district_id);
+CREATE INDEX IF NOT EXISTS idx_recommendation_priority ON recommendations(priority);
+CREATE INDEX IF NOT EXISTS idx_recommendation_created_at ON recommendations(created_at);
+CREATE INDEX IF NOT EXISTS idx_analytics_category ON analytics_events(category);
+CREATE INDEX IF NOT EXISTS idx_analytics_source ON analytics_events(source);
+CREATE INDEX IF NOT EXISTS idx_analytics_timestamp ON analytics_events(timestamp);
+CREATE INDEX IF NOT EXISTS idx_sustainability_district ON sustainability_metrics(district_id);
+CREATE INDEX IF NOT EXISTS idx_sustainability_metric_type ON sustainability_metrics(metric_type);
+CREATE INDEX IF NOT EXISTS idx_sustainability_timestamp ON sustainability_metrics(timestamp);
+CREATE INDEX IF NOT EXISTS idx_score_district ON sustainability_scores(district_id);
+CREATE INDEX IF NOT EXISTS idx_score_timestamp ON sustainability_scores(calculated_at);
 
 -- Insert sample data
 INSERT INTO districts (name, population, sustainability_score, operational_risk_score)
@@ -74,6 +124,6 @@ ON CONFLICT (name) DO NOTHING;
 INSERT INTO incidents (type, description, severity, latitude, longitude, district_id, status, created_at, updated_at)
 VALUES
     ('Traffic Congestion', 'Heavy traffic on Main St', 'HIGH', 40.7128, -74.0060, 1, 'IN_PROGRESS', NOW(), NOW()),
-    ('Power Outage', 'Electrical outage affecting 3 blocks', 'CRITICAL', 40.7589, -73.9851, 2, 'REPORTED', NOW(), NOW()),
+    ('Power Outage', 'Electrical outage affecting 3 blocks', 'CRITICAL', 40.7589, -73.9851, 2, 'OPEN', NOW(), NOW()),
     ('Water Leak', 'Major water leak detected', 'MEDIUM', 40.7489, -73.9680, 1, 'RESOLVED', NOW(), NOW())
 ON CONFLICT DO NOTHING;

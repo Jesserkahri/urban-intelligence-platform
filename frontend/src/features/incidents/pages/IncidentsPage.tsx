@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Radio } from "lucide-react";
 import { Badge } from "@components/ui/Badge";
 import { Button } from "@components/ui/Button";
 import { Input } from "@components/ui/Input";
@@ -33,10 +33,10 @@ import {
 } from "@hooks/useIncidents";
 import {
   useAssignIncident,
-  useAcknowledgeIncident,
   useReviewIncident,
   useActivityTimeline,
 } from "@hooks/useWorkflow";
+import { useLiveOperations } from "@context/liveOperations";
 import { useDistricts } from "@hooks/useDistricts";
 import { formatDate, SEVERITY_COLORS, STATUS_COLORS } from "@lib/utils";
 
@@ -121,8 +121,8 @@ export const IncidentsPage: React.FC = () => {
   const updateMutation = useUpdateIncident();
   const deleteMutation = useDeleteIncident();
   const assignMutation = useAssignIncident();
-  const acknowledgeMutation = useAcknowledgeIncident();
   const reviewMutation = useReviewIncident();
+  const { connected, events } = useLiveOperations();
 
   const { data: timeline, isLoading: timelineLoading } = useActivityTimeline(
     "INCIDENT",
@@ -131,6 +131,9 @@ export const IncidentsPage: React.FC = () => {
 
   const incidentRows = incidentPage?.content ?? [];
   const districtOptions = districtList?.content ?? [];
+  const liveIncidentEvents = events
+    .filter((event) => event.channel === "incidents")
+    .slice(0, 5);
 
   const totalPages = incidentPage?.totalPages ?? 1;
 
@@ -506,6 +509,56 @@ export const IncidentsPage: React.FC = () => {
           </div>
         </form>
       </Dialog>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between gap-4">
+            <CardTitle>Live incident feed</CardTitle>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Radio
+                className={`h-4 w-4 ${connected ? "text-green-500" : "text-muted-foreground"}`}
+              />
+              {connected ? "Connected" : "Reconnecting"}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {liveIncidentEvents.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No incident stream events received in this session.
+            </p>
+          ) : (
+            <div className="grid gap-3 lg:grid-cols-2">
+              {liveIncidentEvents.map((event) => (
+                <div
+                  key={event.id}
+                  className="rounded-lg border border-border p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold">{event.title}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {event.message}
+                      </p>
+                    </div>
+                    <Badge
+                      className={
+                        SEVERITY_COLORS[event.severity as IncidentSeverity] ??
+                        ""
+                      }
+                    >
+                      {event.severity}
+                    </Badge>
+                  </div>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    {formatDate(event.occurredAt)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

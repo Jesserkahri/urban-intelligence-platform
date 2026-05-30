@@ -324,3 +324,127 @@ export interface ApiError {
   status?: number;
   timestamp?: string;
 }
+
+// Real-time operations types
+export interface LiveDashboardSnapshot {
+  activeIncidents: number;
+  criticalIncidents24h: number;
+  unresolvedIncidents: number;
+  unreadNotifications: number;
+  alerts24h: number;
+  statusCounters: Record<string, number>;
+  severityCounters: Record<string, number>;
+  generatedAt: string;
+}
+
+export interface OperationalNotification {
+  id: number;
+  type: string;
+  severity: string;
+  title: string;
+  message: string;
+  incidentId?: number;
+  districtId?: number;
+  acknowledged: boolean;
+  readAt?: string;
+  createdAt: string;
+}
+
+export interface LiveOperationEvent {
+  id: string;
+  type: string;
+  channel: string;
+  severity: string;
+  title: string;
+  message: string;
+  incidentId?: number;
+  districtId?: number;
+  occurredAt: string;
+  payload?: {
+    incident?: Incident;
+    notification?: OperationalNotification;
+    snapshot?: LiveDashboardSnapshot;
+    [key: string]: unknown;
+  };
+}
+
+// Intelligence outputs
+export interface AnomalyResponse {
+  districtId: number;
+  districtName: string;
+  date: string;
+  expectedValue: number;
+  actualValue: number;
+  rolling7DayAverage: number;
+  rolling30DayAverage: number;
+  standardDeviation: number;
+  anomalyScore: number;
+  deviationPercentage: number;
+  confidence: number;
+  direction: string;
+  explanation: string;
+}
+
+export interface ForecastResponse {
+  districtId: number;
+  districtName: string;
+  forecastWindowDays: number;
+  baselineDailyAverage: number;
+  weightedMovingAverage: number;
+  trendAcceleration: number;
+  confidence: number;
+  predictedIncidents: number;
+  explanation: string;
+  forecast: Array<{
+    date: string;
+    predictedIncidents: number;
+    lowerBound: number;
+    upperBound: number;
+    weekdaySeasonalityFactor: number;
+    confidence: number;
+  }>;
+}
+
+export interface SpatialRiskResponse {
+  districtId: number;
+  districtName: string;
+  localIncidentDensity: number;
+  neighboringDistrictDensity: number;
+  hotspotSpreadFactor: number;
+  districtInfluenceScore: number;
+  neighboringRiskPropagationScore: number;
+  spatialRisk: number;
+  influenceRadius: string;
+  neighboringImpact: number;
+  neighboringDistricts: string[];
+  explanation: string;
+}
+
+export interface RecommendationExplanationResponse {
+  recommendationId: number;
+  districtId: number;
+  districtName: string;
+  type: string;
+  priority: string;
+  reasoning: string;
+  impact: "low" | "medium" | "high" | string;
+  confidence: number;
+  evidence: Record<string, unknown>;
+}
+
+export interface RiskExplanationResponse {
+  districtId: number;
+  districtName: string;
+  riskScore: number;
+  riskLevel: string;
+  trendDirection: string;
+  confidence: number;
+  contributingFactors: Array<{
+    name: string;
+    value: number;
+    weight: number;
+    contribution: number;
+    explanation: string;
+  }>;
+  explanation: string;
+}

@@ -102,6 +102,43 @@ public interface IncidentRepository extends JpaRepository<Incident, Long> {
         """, nativeQuery = true)
     List<Object[]> getDailyIncidentCounts(@Param("startDate") LocalDateTime startDate);
 
+    @Query(value = """
+        SELECT i.district_id, CAST(i.created_at AS DATE) as date, COUNT(*) as cnt
+        FROM incidents i
+        WHERE i.created_at >= :startDate
+        GROUP BY i.district_id, CAST(i.created_at AS DATE)
+        ORDER BY i.district_id, date
+        """, nativeQuery = true)
+    List<Object[]> getDailyIncidentCountsByDistrict(@Param("startDate") LocalDateTime startDate);
+
+    @Query(value = """
+        SELECT CAST(i.created_at AS DATE) as date, COUNT(*) as cnt
+        FROM incidents i
+        WHERE i.district_id = :districtId AND i.created_at >= :startDate
+        GROUP BY CAST(i.created_at AS DATE)
+        ORDER BY date
+        """, nativeQuery = true)
+    List<Object[]> getDailyIncidentCountsForDistrict(
+        @Param("districtId") Long districtId,
+        @Param("startDate") LocalDateTime startDate);
+
+    @Query(value = """
+        SELECT i.district_id,
+               COUNT(*) as total,
+               SUM(CASE WHEN i.status IN ('REPORTED', 'OPEN', 'IN_PROGRESS') THEN 1 ELSE 0 END) as unresolved,
+               SUM(CASE WHEN i.severity = 'CRITICAL' THEN 1 ELSE 0 END) as critical,
+               AVG(CASE i.severity
+                   WHEN 'LOW' THEN 1
+                   WHEN 'MEDIUM' THEN 2
+                   WHEN 'HIGH' THEN 4
+                   WHEN 'CRITICAL' THEN 7
+                   ELSE 1
+               END) as avg_severity
+        FROM incidents i
+        GROUP BY i.district_id
+        """, nativeQuery = true)
+    List<Object[]> getDistrictIncidentRiskStats();
+
     /**
      * Daily critical incident counts over date range.
      */

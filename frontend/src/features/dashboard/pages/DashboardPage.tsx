@@ -9,8 +9,10 @@ import {
   useDistrictRiskRanking,
   useHotspotRankings,
 } from "@hooks/useAnalytics";
+import { useLiveOperations } from "@context/liveOperations";
 import { useDistricts } from "@hooks/useDistricts";
 import { useRecentIncidents } from "@hooks/useIncidents";
+import { useLiveDashboardSnapshot } from "@hooks/useOperations";
 import { formatDate } from "@lib/utils";
 import { DistrictRiskRankingResponse } from "@appTypes/api";
 
@@ -28,6 +30,11 @@ export const DashboardPage: React.FC = () => {
     useRecentIncidents();
   const { data: dashboardInsights, isLoading: isDashboardLoading } =
     useDashboardInsights();
+  const { connected, latestEvent, snapshot: streamedSnapshot } =
+    useLiveOperations();
+  const { data: polledSnapshot } = useLiveDashboardSnapshot();
+
+  const liveSnapshot = streamedSnapshot ?? polledSnapshot;
 
   const averageRiskScore =
     riskRanking && riskRanking.length
@@ -57,10 +64,46 @@ export const DashboardPage: React.FC = () => {
         </p>
       </div>
 
+      <div className="rounded-lg border border-border bg-card p-4">
+        <div className="grid gap-4 md:grid-cols-[1fr_repeat(3,auto)] md:items-center">
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">
+              Live operations stream
+            </p>
+            <p className="text-lg font-semibold">
+              {connected ? "Connected" : "Reconnecting"}
+            </p>
+            {latestEvent && (
+              <p className="mt-1 text-sm text-muted-foreground">
+                {latestEvent.title} - {formatDate(latestEvent.occurredAt)}
+              </p>
+            )}
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Active</p>
+            <p className="text-2xl font-semibold">
+              {liveSnapshot?.activeIncidents ?? "--"}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Critical 24h</p>
+            <p className="text-2xl font-semibold">
+              {liveSnapshot?.criticalIncidents24h ?? "--"}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Unread alerts</p>
+            <p className="text-2xl font-semibold">
+              {liveSnapshot?.unreadNotifications ?? "--"}
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <KPICard
           label="Active Incidents"
-          value={recentIncidents?.length ?? "—"}
+          value={liveSnapshot?.activeIncidents ?? recentIncidents?.length ?? "--"}
           change={dailyTrend ? dailyTrend.growthPercentage : undefined}
           trend={(dailyTrend?.growthPercentage ?? 0) >= 0 ? "up" : "down"}
           icon={<AlertTriangle className="h-4 w-4" />}
@@ -99,7 +142,7 @@ export const DashboardPage: React.FC = () => {
         />
         <KPICard
           label="Active Alerts"
-          value={dashboardInsights?.alerts?.length ?? "—"}
+          value={liveSnapshot?.alerts24h ?? dashboardInsights?.alerts?.length ?? "--"}
           unit="items"
           icon={<Zap className="h-4 w-4" />}
         />

@@ -2,6 +2,7 @@ package com.urban.intelligence.platform.api.controller;
 
 import com.urban.intelligence.platform.analytics.DistrictRiskScoringService;
 import com.urban.intelligence.platform.analytics.HotspotDetectionService;
+import com.urban.intelligence.platform.analytics.IntelligenceMaturityService;
 import com.urban.intelligence.platform.analytics.OperationalInsightService;
 import com.urban.intelligence.platform.analytics.TrendAggregationService;
 import com.urban.intelligence.platform.domain.entity.Recommendation;
@@ -18,6 +19,11 @@ import com.urban.intelligence.platform.dto.analytics.HotspotResponse;
 import com.urban.intelligence.platform.dto.analytics.DashboardInsightResponse;
 import com.urban.intelligence.platform.dto.analytics.OperationalInsightResponse;
 import com.urban.intelligence.platform.dto.analytics.WeeklyTrendResponse;
+import com.urban.intelligence.platform.dto.intelligence.AnomalyResponse;
+import com.urban.intelligence.platform.dto.intelligence.ForecastResponse;
+import com.urban.intelligence.platform.dto.intelligence.RecommendationExplanationResponse;
+import com.urban.intelligence.platform.dto.intelligence.RiskExplanationResponse;
+import com.urban.intelligence.platform.dto.intelligence.SpatialRiskResponse;
 import com.urban.intelligence.platform.service.AnalyticsEventService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +51,7 @@ public class AnalyticsController {
     private final TrendAggregationService trendAggregationService;
     private final DistrictRiskScoringService riskScoringService;
     private final OperationalInsightService insightService;
+    private final IntelligenceMaturityService intelligenceMaturityService;
 
     @PostMapping("/events")
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'ANALYST')")
@@ -181,5 +188,49 @@ public class AnalyticsController {
     @GetMapping("/insights/dashboard")
     public ResponseEntity<ApiResponse<DashboardInsightResponse>> getDashboardInsights() {
         return ResponseEntity.ok(ApiResponse.success(insightService.generateDashboardInsights()));
+    }
+
+    @GetMapping("/intelligence/anomalies")
+    public ResponseEntity<ApiResponse<List<AnomalyResponse>>> detectStatisticalAnomalies() {
+        return ResponseEntity.ok(ApiResponse.success(intelligenceMaturityService.detectIncidentAnomalies()));
+    }
+
+    @GetMapping("/intelligence/forecasts")
+    public ResponseEntity<ApiResponse<List<ForecastResponse>>> forecastAllDistricts(
+            @RequestParam(defaultValue = "7") int days) {
+        return ResponseEntity.ok(ApiResponse.success(
+                intelligenceMaturityService.forecastAllDistricts(Math.min(Math.max(days, 1), 30))));
+    }
+
+    @GetMapping("/intelligence/forecasts/district/{districtId}")
+    public ResponseEntity<ApiResponse<ForecastResponse>> forecastDistrict(
+            @PathVariable Long districtId,
+            @RequestParam(defaultValue = "7") int days) {
+        return ResponseEntity.ok(ApiResponse.success(
+                intelligenceMaturityService.forecastDistrict(districtId, Math.min(Math.max(days, 1), 30))));
+    }
+
+    @GetMapping("/intelligence/spatial-risk")
+    public ResponseEntity<ApiResponse<List<SpatialRiskResponse>>> spatialRisk() {
+        return ResponseEntity.ok(ApiResponse.success(intelligenceMaturityService.spatialRisk()));
+    }
+
+    @GetMapping("/intelligence/risk-explanations")
+    public ResponseEntity<ApiResponse<List<RiskExplanationResponse>>> riskExplanations() {
+        return ResponseEntity.ok(ApiResponse.success(intelligenceMaturityService.riskExplanations()));
+    }
+
+    @GetMapping("/intelligence/risk-explanations/{districtId}")
+    public ResponseEntity<ApiResponse<RiskExplanationResponse>> riskExplanation(@PathVariable Long districtId) {
+        return ResponseEntity.ok(ApiResponse.success(intelligenceMaturityService.riskExplanation(districtId)));
+    }
+
+    @GetMapping("/intelligence/recommendation-explanations")
+    public ResponseEntity<ApiResponse<List<RecommendationExplanationResponse>>> recommendationExplanations(
+            @RequestParam(required = false) Long districtId) {
+        List<RecommendationExplanationResponse> response = districtId == null
+                ? intelligenceMaturityService.recommendationExplanations()
+                : intelligenceMaturityService.recommendationExplanations(districtId);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

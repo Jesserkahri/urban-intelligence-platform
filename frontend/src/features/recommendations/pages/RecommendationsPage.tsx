@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/Card";
+import { Card, CardContent } from "@components/ui/Card";
 import { Badge } from "@components/ui/Badge";
 import { Button } from "@components/ui/Button";
 import { Input } from "@components/ui/Input";
@@ -15,6 +15,7 @@ import {
   useRejectRecommendation,
   useActivityTimeline,
 } from "@hooks/useWorkflow";
+import { useRecommendationExplanations } from "@hooks/useAnalytics";
 import { ActivityTimeline } from "@components/common/ActivityTimeline";
 import { RecommendationDecisionDialog } from "@components/features/WorkflowDialogs";
 import { PRIORITY_COLORS } from "@lib/utils";
@@ -30,6 +31,7 @@ export const RecommendationsPage: React.FC = () => {
     size: 20,
     sort: "priority,desc",
   });
+  const { data: explanations } = useRecommendationExplanations();
 
   const { data: timeline, isLoading: timelineLoading } = useActivityTimeline(
     "RECOMMENDATION",
@@ -49,6 +51,17 @@ export const RecommendationsPage: React.FC = () => {
         .some((field) => field.toLowerCase().includes(value));
     });
   }, [data?.content, search]);
+
+  const explanationsByRecommendationId = useMemo(
+    () =>
+      new Map(
+        (explanations ?? []).map((explanation) => [
+          explanation.recommendationId,
+          explanation,
+        ]),
+      ),
+    [explanations],
+  );
 
   const handleApprove = (decision: "APPROVED" | "REJECTED", reason: string) => {
     if (selectedRec) {
@@ -102,11 +115,7 @@ export const RecommendationsPage: React.FC = () => {
                 </Card>
               ))
             : filteredRecommendations.map((recommendation: Recommendation) => (
-                <Card
-                  key={recommendation.id}
-                  className="cursor-pointer hover:border-primary/50"
-                  onClick={() => setSelectedRec(recommendation)}
-                >
+                <Card key={recommendation.id} className="hover:border-primary/50">
                   <CardContent className="pt-6">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                       <div className="flex-1">
@@ -119,6 +128,39 @@ export const RecommendationsPage: React.FC = () => {
                         <p className="text-xs text-muted-foreground mt-2">
                           District: {recommendation.districtName}
                         </p>
+                        {explanationsByRecommendationId.has(
+                          recommendation.id,
+                        ) && (
+                          <div className="mt-4 rounded-lg border border-border p-3">
+                            <p className="text-sm font-medium">
+                              Decision reasoning
+                            </p>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              {
+                                explanationsByRecommendationId.get(
+                                  recommendation.id,
+                                )?.reasoning
+                              }
+                            </p>
+                            <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                              <span>
+                                Impact:{" "}
+                                {
+                                  explanationsByRecommendationId.get(
+                                    recommendation.id,
+                                  )?.impact
+                                }
+                              </span>
+                              <span>
+                                Confidence:{" "}
+                                {explanationsByRecommendationId
+                                  .get(recommendation.id)
+                                  ?.confidence.toFixed(0)}
+                                %
+                              </span>
+                            </div>
+                          </div>
+                        )}
                         {recommendation.status && (
                           <Badge className="mt-2" variant="outline">
                             {recommendation.status}
@@ -183,6 +225,34 @@ export const RecommendationsPage: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {selectedRec &&
+              explanationsByRecommendationId.has(selectedRec.id) && (
+                <div>
+                  <h4 className="font-semibold mb-2">Operational reasoning</h4>
+                  <div className="rounded-lg border border-border p-4">
+                    <p className="text-sm text-muted-foreground">
+                      {
+                        explanationsByRecommendationId.get(selectedRec.id)
+                          ?.reasoning
+                      }
+                    </p>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      {Object.entries(
+                        explanationsByRecommendationId.get(selectedRec.id)
+                          ?.evidence ?? {},
+                      ).map(([key, value]) => (
+                        <div key={key} className="rounded-md bg-muted p-3">
+                          <p className="text-xs text-muted-foreground">
+                            {key}
+                          </p>
+                          <p className="font-semibold">{String(value)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
 
             <div>
               <h4 className="font-semibold mb-3">Activity Timeline</h4>
