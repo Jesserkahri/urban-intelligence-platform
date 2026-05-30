@@ -40,16 +40,21 @@ export const useRecentIncidents = () =>
     retry: 2,
   });
 
+const invalidateOnMutation = (
+  queryClient: ReturnType<typeof useQueryClient>,
+) => {
+  queryClient.invalidateQueries({ queryKey: ["incidents"] });
+  queryClient.invalidateQueries({ queryKey: ["incidents", "recent"] });
+  queryClient.invalidateQueries({ queryKey: ["incidents", "geo"] });
+  queryClient.invalidateQueries({ queryKey: ["analytics"] });
+};
+
 export const useCreateIncident = () => {
   const queryClient = useQueryClient();
 
   return useMutation<Incident, Error, IncidentCreateRequest>({
     mutationFn: (payload: IncidentCreateRequest) => createIncident(payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["incidents"] });
-      queryClient.invalidateQueries({ queryKey: ["incidents", "recent"] });
-      queryClient.invalidateQueries({ queryKey: ["analytics"] });
-    },
+    onSuccess: () => invalidateOnMutation(queryClient),
   });
 };
 
@@ -86,11 +91,7 @@ export const useUpdateIncident = () => {
         });
       }
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["incidents"] });
-      queryClient.invalidateQueries({ queryKey: ["incidents", "recent"] });
-      queryClient.invalidateQueries({ queryKey: ["analytics"] });
-    },
+    onSettled: () => invalidateOnMutation(queryClient),
   });
 };
 
@@ -124,9 +125,6 @@ export const useDeleteIncident = () => {
         });
       }
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["incidents"] });
-      queryClient.invalidateQueries({ queryKey: ["incidents", "recent"] });
-    },
+    onSettled: () => invalidateOnMutation(queryClient),
   });
 };

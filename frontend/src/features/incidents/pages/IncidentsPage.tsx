@@ -63,12 +63,21 @@ const sortOptions = [
   { label: "Status", value: "status,asc" },
 ];
 
+const INCIDENT_TYPES = [
+  "Power Outage",
+  "Water Leak",
+  "Traffic Congestion",
+  "Gas Leak",
+  "Flood Warning",
+  "Other",
+] as const;
+
 const defaultFormState = {
   type: "",
   description: "",
   severity: "MEDIUM" as IncidentSeverity,
-  latitude: 0,
-  longitude: 0,
+  latitude: 40.747,
+  longitude: -73.995,
   districtId: 0,
   status: "OPEN" as IncidentStatus,
 };
@@ -345,36 +354,51 @@ export const IncidentsPage: React.FC = () => {
           <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
             <div className="space-y-4">
               <FormField
-                label="Type"
+                label="Category"
                 htmlFor="incident-type"
                 error={formError?.includes("type") ? formError : undefined}
               >
-                <Input
+                <select
                   id="incident-type"
                   value={form.type}
-                  onChange={(event) =>
-                    setForm({ ...form, type: event.target.value })
-                  }
-                  placeholder="Traffic congestion, air quality, etc."
-                />
+                  onChange={(event) => {
+                    const val = event.target.value;
+                    setForm({
+                      ...form,
+                      type: val,
+                      description: val === "Other" ? "" : val,
+                    });
+                  }}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none"
+                >
+                  <option value="">Select a category</option>
+                  {INCIDENT_TYPES.map((incidentType) => (
+                    <option key={incidentType} value={incidentType}>
+                      {incidentType}
+                    </option>
+                  ))}
+                </select>
               </FormField>
 
-              <FormField
-                label="Description"
-                htmlFor="incident-description"
-                error={
-                  formError?.includes("Description") ? formError : undefined
-                }
-              >
-                <Input
-                  id="incident-description"
-                  value={form.description}
-                  onChange={(event) =>
-                    setForm({ ...form, description: event.target.value })
+              {form.type === "Other" && (
+                <FormField
+                  label="Description"
+                  htmlFor="incident-description"
+                  error={
+                    formError?.includes("Description") ? formError : undefined
                   }
-                  placeholder="Describe the incident"
-                />
-              </FormField>
+                >
+                  <textarea
+                    id="incident-description"
+                    value={form.description}
+                    onChange={(event) =>
+                      setForm({ ...form, description: event.target.value })
+                    }
+                    placeholder="Describe the incident"
+                    className="w-full min-h-24 rounded-md border border-input bg-background px-3 py-2 text-sm outline-none"
+                  />
+                </FormField>
+              )}
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField label="Severity" htmlFor="incident-severity">

@@ -9,6 +9,6 @@ export const useIncidentGeoPoints = (params: IncidentGeoQueryParams) =>
   useQuery<Incident[], Error>({
     queryKey: ["incidents", "geo", params],
     queryFn: () => fetchIncidentGeoPoints(params),
-    staleTime: 1000 * 60 * 2,
+    staleTime: 1000 * 10,
     retry: 2,
   });
