@@ -574,7 +574,7 @@ export const IncidentsPage: React.FC = () => {
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between w-full">
-            <CardTitle>Incident ledger</CardTitle>
+            <CardTitle>Incidents List</CardTitle>
             <div className="grid w-full max-w-4xl gap-3 sm:grid-cols-4">
               <Input
                 placeholder="Search incidents"
