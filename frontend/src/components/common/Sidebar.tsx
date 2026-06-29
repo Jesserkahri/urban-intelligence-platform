@@ -9,6 +9,7 @@ import {
   Globe2,
   Leaf,
   X,
+  Users,
 } from "lucide-react";
 import { useAuth } from "@context/auth";
 import { cn } from "@lib/utils";
@@ -41,6 +42,12 @@ const navItems: Array<{
     label: "Analytics",
     icon: BarChart3,
     roles: ["ADMIN", "OPERATOR", "ANALYST"],
+  },
+  {
+    href: "/users",
+    label: "Users",
+    icon: Users,
+    roles: ["ADMIN"],
   },
   {
     href: "/spatial",

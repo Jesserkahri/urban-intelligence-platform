@@ -15,6 +15,7 @@ export const AppRoutes = () => {
     <Routes>
       {/* Public routes */}
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
       {/* Protected routes */}
@@ -90,6 +91,26 @@ export const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/users"
+        element={
+          <ProtectedRoute requiredRole={["ADMIN"]}>
+            <MainLayout>
+              <Users />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/users/add"
+        element={
+          <ProtectedRoute requiredRole={["ADMIN"]}>
+            <MainLayout>
+              <AddUser />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
 
       {/* Catch all */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -99,6 +120,9 @@ export const AppRoutes = () => {
 };
 
 import { Navigate } from "react-router-dom";
+import { RegisterPage } from "@/pages/RegisterPage";
+import Users from "@/pages/Users";
+import AddUser from "@/pages/AddUser";
 
 const UnauthorizedPage = () => (
   <div className="flex items-center justify-center min-h-screen">

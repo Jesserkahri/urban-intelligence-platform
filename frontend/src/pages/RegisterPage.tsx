@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link,useNavigate } from "react-router-dom";
 import { useAuth } from "@context/auth";
 import { Button } from "@components/ui/Button";
 import { Input } from "@components/ui/Input";
@@ -11,10 +11,11 @@ import {
   CardTitle,
 } from "@components/ui/Card";
 
-export const LoginPage: React.FC = () => {
+export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
-  const { login, isLoading, error, clearError } = useAuth();
+  const { register, isLoading, error, clearError } = useAuth();
   const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
 
@@ -23,14 +24,14 @@ export const LoginPage: React.FC = () => {
     setLocalError(null);
     clearError();
 
-    if (!username || !password) {
-      setLocalError("Username and password are required");
+    if (!username || !password || !email) {
+      setLocalError("Username and password and email are required");
       return;
     }
 
     try {
-      await login(username, password);
-      navigate("/dashboard", { replace: true });
+      await register(username,email ,password);
+      navigate("/login", { replace: true });
     } catch (err) {
       setLocalError(error || "Login failed. Please try again.");
     }
@@ -48,9 +49,9 @@ export const LoginPage: React.FC = () => {
         {/* Login Card */}
         <Card className="border-slate-700 bg-slate-800">
           <CardHeader>
-            <CardTitle className="text-white">Sign In</CardTitle>
+            <CardTitle className="text-white">Create an Account</CardTitle>
             <CardDescription className="text-slate-400">
-              Enter your credentials to access the platform
+              Fill in your information to create your account.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -65,17 +66,33 @@ export const LoginPage: React.FC = () => {
               {/* Username */}
               <div className="space-y-2">
                 <label className="text-sm font-medium text-slate-200">
-                  Username or email
+                  Username
                 </label>
                 <Input
                   type="text"
-                  placeholder="Enter your username or email"
+                  placeholder="Enter your username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   disabled={isLoading}
                   className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
                 />
               </div>
+
+               {/* Username */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-200">
+                  Email
+                </label>
+                <Input
+                  type="text"
+                  placeholder="Enter your Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
+                  className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
+                />
+              </div>
+
 
               {/* Password */}
               <div className="space-y-2">
@@ -91,31 +108,16 @@ export const LoginPage: React.FC = () => {
                   className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
                 />
               </div>
-              
 
               {/* Submit Button */}
               <Button type="submit" disabled={isLoading} className="w-full">
-                {isLoading ? "Signing In..." : "Sign In"}
+                {isLoading ? "Registering..." : "Register"}
               </Button>
               <div className="flex justify-center">
-                <p>
-                  Don't have an account?{" "}
-                  <Link className="text-blue-500" to="/register">
-                    Register
-                  </Link>
+                <p>have you account? 
+                <Link className=" text-blue-500" to={"/login"}> Sign in</Link>
                 </p>
-              </div>
-
-              {/* Demo Credentials */}
-              <div className="pt-4 border-t border-slate-700">
-                <p className="text-xs text-slate-400 mb-3">Demo Credentials:</p>
-                <div className="space-y-1 text-xs text-slate-500">
-                  <p>Admin: admin / admin123</p>
-                  <p>Operator: operator / operator123</p>
-                  <p>Analyst: analyst / analyst123</p>
-                  <p>Viewer: viewer / viewer123</p>
                 </div>
-              </div>
             </form>
           </CardContent>
         </Card>

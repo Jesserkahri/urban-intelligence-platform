@@ -10,6 +10,7 @@ import { authService } from "@services/auth"; // ← was "./auth", now "@service
 
 interface AuthContextType extends AuthState {
   login: (username: string, password: string) => Promise<void>;
+  register: (username: string,email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   hasRole: (role: Role | Role[]) => boolean;
   clearError: () => void;
@@ -88,6 +89,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
+   const register = async (username: string,email: string ,password: string) => {
+    setState((prev) => ({ ...prev, isLoading: true, error: null }));
+    try {
+      const { user, tokens } = await authService.register({
+        username,
+        email,
+        password,
+      });
+      setState({
+        user,
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Login failed";
+      setState((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: errorMessage,
+      }));
+      throw error;
+    }
+  };
+
+
   const logout = async () => {
     setState((prev) => ({ ...prev, isLoading: true }));
     try {
@@ -131,6 +161,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         login,
         logout,
         hasRole,
+        register,
         clearError,
       }}
     >

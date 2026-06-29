@@ -1,5 +1,5 @@
 import { apiClient, ApiResponse } from "./api";
-import { LoginRequest, TokenResponse, User } from "../types/api";
+import { LoginRequest, RegisterRequest, TokenResponse, User } from "../types/api";
 export class AuthService {
   async login(
     credentials: LoginRequest,
@@ -22,6 +22,30 @@ export class AuthService {
       tokens,
     };
   }
+
+  async register(
+    credentials: RegisterRequest,
+  ): Promise<{ user: User; tokens: TokenResponse }> {
+    const response = await apiClient.post<ApiResponse<TokenResponse>>(
+      "/api/auth/register",
+      credentials,
+    );
+
+    if (!response.data.success || !response.data.data) {
+      throw new Error(response.data.message || "register failed");
+    }
+
+    const tokens = response.data.data;
+    apiClient.setTokens(tokens);
+
+    const user = await this.getCurrentUser();
+    return {
+      user,
+      tokens,
+    };
+  }
+
+
 
   async logout(): Promise<void> {
     try {

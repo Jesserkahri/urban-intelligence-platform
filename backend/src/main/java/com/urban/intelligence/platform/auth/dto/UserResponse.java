@@ -4,8 +4,11 @@ import com.urban.intelligence.platform.auth.domain.Role;
 import com.urban.intelligence.platform.auth.domain.User;
 import lombok.Builder;
 import lombok.Data;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
  * UserResponse - safe projection of User data for API responses.
